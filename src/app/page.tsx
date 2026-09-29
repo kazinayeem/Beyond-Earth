@@ -1,69 +1,108 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import React, { useState } from 'react';
+import { useGameStore } from '@/store/gameStore';
+import { StarfieldCanvas } from '@/components/canvas/StarfieldCanvas';
+import { TopNavHeader } from '@/components/ui/TopNavHeader';
+import { TitleScreen } from '@/components/screens/TitleScreen';
+import { MissionSelectScreen } from '@/components/screens/MissionSelectScreen';
+import { MissionBriefingScreen } from '@/components/screens/MissionBriefingScreen';
+import { SpacecraftBuilderScreen } from '@/components/screens/SpacecraftBuilderScreen';
+import { LauncherTrajectoryScreen } from '@/components/screens/LauncherTrajectoryScreen';
+import { LaunchSequenceScreen } from '@/components/screens/LaunchSequenceScreen';
+import { MissionControlScreen } from '@/components/screens/MissionControlScreen';
+import { DebriefScreen } from '@/components/screens/DebriefScreen';
+import { TutorialModal } from '@/components/modals/TutorialModal';
+import { LeaderboardModal } from '@/components/modals/LeaderboardModal';
+import { AchievementsModal } from '@/components/modals/AchievementsModal';
+import { SettingsModal } from '@/components/modals/SettingsModal';
+
+export default function GameMainPage() {
+  const { screen } = useGameStore();
+
+  const [isTutorialOpen, setIsTutorialOpen] = useState(false);
+  const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
+  const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const renderActiveScreen = () => {
+    switch (screen) {
+      case 'title':
+        return (
+          <TitleScreen
+            onOpenTutorial={() => setIsTutorialOpen(true)}
+            onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+        );
+      case 'missions':
+        return <MissionSelectScreen />;
+      case 'briefing':
+        return <MissionBriefingScreen />;
+      case 'builder':
+        return <SpacecraftBuilderScreen />;
+      case 'launcher_trajectory':
+        return <LauncherTrajectoryScreen />;
+      case 'launch':
+        return <LaunchSequenceScreen />;
+      case 'mission_control':
+        return (
+          <MissionControlScreen
+            onOpenTutorial={() => setIsTutorialOpen(true)}
+          />
+        );
+      case 'debrief':
+        return (
+          <DebriefScreen
+            onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+          />
+        );
+      default:
+        return (
+          <TitleScreen
+            onOpenTutorial={() => setIsTutorialOpen(true)}
+            onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+            onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+        );
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+    <main className="relative min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#020617] text-slate-100">
+      {/* Animated Deep Space Canvas */}
+      <StarfieldCanvas density={120} speed={0.15} />
+
+      {/* Persistent Flight Director Navigation Bar */}
+      <TopNavHeader
+        onOpenTutorial={() => setIsTutorialOpen(true)}
+        onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
+        onOpenAchievements={() => setIsAchievementsOpen(true)}
+        onOpenSettings={() => setIsSettingsOpen(true)}
+      />
+
+      {/* Main Screen Content */}
+      <div className="flex-1 flex flex-col justify-center">
+        {renderActiveScreen()}
+      </div>
+
+      {/* Persistent Modals */}
+      <TutorialModal
+        isOpen={isTutorialOpen}
+        onClose={() => setIsTutorialOpen(false)}
+      />
+      <LeaderboardModal
+        isOpen={isLeaderboardOpen}
+        onClose={() => setIsLeaderboardOpen(false)}
+      />
+      <AchievementsModal
+        isOpen={isAchievementsOpen}
+        onClose={() => setIsAchievementsOpen(false)}
+      />
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
+    </main>
   );
 }
