@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
 import { 
   LaunchSequenceCanvas, 
@@ -58,6 +58,23 @@ export const LaunchSequenceScreen: React.FC = () => {
   const lastRealTimeRef = useRef<number | null>(null);
   const animFrameRef = useRef<number | null>(null);
   const isTransitioningRef = useRef(false);
+
+  // Last countdown value that had a tick sound played — prevents duplicate tones
+  const lastTickedCountRef = useRef(-1);
+
+  // Smooth display interpolation refs (updated every rAF, no React re-render)
+  const dispAltRef   = useRef(0);
+  const dispVelRef   = useRef(0);
+  const dispAccRef   = useRef(1.0);
+  const dispQRef     = useRef(0);
+  const dispFuelRef  = useRef(100);
+  // Display state — only updated when values meaningfully change (batched)
+  const [dispAlt,  setDispAlt]  = useState(0);
+  const [dispVel,  setDispVel]  = useState(0);
+  const [dispAcc,  setDispAcc]  = useState(1.0);
+  const [dispQ,    setDispQ]    = useState(0);
+  const [dispFuel, setDispFuel] = useState(100);
+  const dispFlushRef = useRef(0); // Throttle display state flushes to ~10fps
 
   // 1. Initial audio start: starts subtle system hum when player enters screen
   useEffect(() => {
@@ -123,32 +140,36 @@ export const LaunchSequenceScreen: React.FC = () => {
         simTimeSecRef.current += deltaRealSec * effectiveSpeed;
         const tSec = simTimeSecRef.current;
 
+        // Target physics values this frame
+        let targetAlt = 0, targetVel = 0, targetAcc = 1.0, targetQ = 0, targetFuel = 100;
+
         // --- PHASE A: TERMINAL COUNTDOWN (T-10 to T-0) ---
         if (tSec < 0) {
           const remainingSec = Math.max(0, Math.ceil(-tSec));
+
+          // Countdown tick sound — fires once per integer second
+          if (remainingSec !== lastTickedCountRef.current && remainingSec > 0 && remainingSec <= 10) {
+            lastTickedCountRef.current = remainingSec;
+            try { sounds.playClick(); } catch (_) {/* ignore */}
+          }
+
           setCount(remainingSec);
-          setAltitudeKm(0);
-          setVelocityKmh(0);
-          setAccelerationG(1.0);
-          setDynamicPressureKPa(0);
-          setFuelPct(100);
+          targetAlt = 0; targetVel = 0; targetAcc = 1.0; targetQ = 0; targetFuel = 100;
 
           if (tSec < -3.0) {
-            // Prelaunch standby
             setDetailedPhase('PRELAUNCH');
             setFlightPhaseText(`FINAL COUNTDOWN STANDBY // T-${remainingSec}`);
             setChamberStatus('STANDBY 0.0%');
             setGuidanceMode('INERTIAL PLATFORM ALIGNED');
             setRangeSafety('GREEN');
           } else {
-            // T-3 to T-0: Engine Start sequence
             setDetailedPhase('ENGINE_START');
-            setFlightPhaseText(`MAIN ENGINE START SEQUENCE // TURBOPUMPS AT 35.0%`);
+            setFlightPhaseText('MAIN ENGINE START SEQUENCE // TURBOPUMPS AT 35.0%');
             setChamberStatus('SPIN-UP 35.0% (7.2 MPa)');
             setGuidanceMode('AUTONOMOUS FLIGHT CONTROLLER ACTIVE');
             sounds.updateLaunchAudio(0, 0, 'ENGINE_START');
           }
-        } 
+        }
         // --- PHASE B: MAIN ENGINE IGNITION (T+0.0 to T+1.6s) ---
         else if (tSec < 1.6) {
           setCount(0);
@@ -158,158 +179,124 @@ export const LaunchSequenceScreen: React.FC = () => {
           setChamberStatus('104.5% NOMINAL (20.5 MPa)');
           setGuidanceMode('AUTONOMOUS FLIGHT CONTROLLER ACTIVE');
           setRangeSafety('GREEN');
-          setAltitudeKm(0);
-          setVelocityKmh(0);
-          setAccelerationG(1.2);
-          setDynamicPressureKPa(0);
-          setFuelPct(99.4);
+          targetAlt = 0; targetVel = 0; targetAcc = 1.2; targetQ = 0; targetFuel = 99.4;
           sounds.updateLaunchAudio(0, 0, 'IGNITION');
         }
         // --- PHASE C: LIFTOFF (T+1.6 to T+3.2s) ---
         else if (tSec < 3.2) {
           const t = (tSec - 1.6) / 3.4;
-          const alt = 14.2 * Math.pow(t, 2);
-          const vel = 3200 * Math.pow(t, 1.5);
+          targetAlt = 14.2 * Math.pow(t, 2);
+          targetVel = 3200 * Math.pow(t, 1.5);
+          targetAcc = 1.2 + (tSec - 1.6) * 0.4;
+          targetQ   = targetAlt * 0.9;
+          targetFuel = 98 - (tSec * 1.5);
           setDetailedPhase('LIFTOFF');
           setLaunchStatus('LIFTOFF');
           setFlightPhaseText('LIFTOFF! HOLD-DOWN CLAMPS RELEASED');
           setChamberStatus('104.5% NOMINAL');
           setGuidanceMode('PRIMARY ASCENT GUIDANCE PROGRAM');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(1.2 + (tSec - 1.6) * 0.4);
-          setDynamicPressureKPa(alt * 0.9);
-          setFuelPct(98 - (tSec * 1.5));
-          sounds.updateLaunchAudio(alt, vel, 'LIFTOFF');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'LIFTOFF');
         }
         // --- PHASE D: PAD CLEARANCE (T+3.2 to T+5.0s) ---
         else if (tSec < 5.0) {
           const t = (tSec - 1.6) / 3.4;
-          const alt = 14.2 * Math.pow(t, 2);
-          const vel = 3200 * Math.pow(t, 1.5);
+          targetAlt = 14.2 * Math.pow(t, 2);
+          targetVel = 3200 * Math.pow(t, 1.5);
+          targetAcc = 1.8; targetQ = targetAlt * 1.4; targetFuel = 94 - (tSec * 1.5);
           setDetailedPhase('PAD_CLEARANCE');
           setLaunchStatus('LIFTOFF');
           setFlightPhaseText('TOWER CLEARED // VEHICLE PITCH PROGRAM INITIATED');
           setChamberStatus('104.5% NOMINAL');
           setGuidanceMode('GRAVITY TURN PITCH PROGRAM');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(1.8);
-          setDynamicPressureKPa(alt * 1.4);
-          setFuelPct(94 - (tSec * 1.5));
-          sounds.updateLaunchAudio(alt, vel, 'PAD_CLEARANCE');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'PAD_CLEARANCE');
         }
         // --- PHASE E: TRANS-SONIC ASCENT (T+5.0 to T+7.0s) ---
         else if (tSec < 7.0) {
           const t = (tSec - 5.0) / 3.5;
-          const alt = 14.2 + (52.0 - 14.2) * t;
-          const vel = 3200 + (8600 - 3200) * Math.pow(t, 1.2);
+          targetAlt = 14.2 + (52.0 - 14.2) * t;
+          targetVel = 3200 + (8600 - 3200) * Math.pow(t, 1.2);
+          targetAcc = 2.4; targetQ = 20.0 + (tSec - 5.0) * 7.0; targetFuel = 86 - (tSec * 1.8);
           setDetailedPhase('ASCENT');
           setLaunchStatus('MAX_Q');
           setFlightPhaseText('TRANS-SONIC ASCENT // DYNAMIC PRESSURE BUILDING');
           setChamberStatus('104.5% NOMINAL');
           setGuidanceMode('MAX-Q ADAPTIVE THROTTLE');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(2.4);
-          setDynamicPressureKPa(20.0 + (tSec - 5.0) * 7.0);
-          setFuelPct(86 - (tSec * 1.8));
-          sounds.updateLaunchAudio(alt, vel, 'ASCENT');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'ASCENT');
         }
-        // --- PHASE F: MAX-Q MAXIMUM DYNAMIC PRESSURE (T+7.0 to T+8.5s) ---
+        // --- PHASE F: MAX-Q (T+7.0 to T+8.5s) ---
         else if (tSec < 8.5) {
           const t = (tSec - 5.0) / 3.5;
-          const alt = 14.2 + (52.0 - 14.2) * t;
-          const vel = 3200 + (8600 - 3200) * Math.pow(t, 1.2);
+          targetAlt = 14.2 + (52.0 - 14.2) * t;
+          targetVel = 3200 + (8600 - 3200) * Math.pow(t, 1.2);
+          targetAcc = 2.8; targetQ = 34.8; targetFuel = 78 - (tSec * 1.8);
           setDetailedPhase('MAX_Q');
           setLaunchStatus('MAX_Q');
           setFlightPhaseText('MAX-Q // MAXIMUM AERODYNAMIC LOADS NOMINAL');
           setChamberStatus('THROTTLED DOWN TO 85.0% (MAX-Q)');
           setGuidanceMode('AERODYNAMIC LOAD SUPPRESSION');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(2.8);
-          setDynamicPressureKPa(34.8); // Peak Max-Q
-          setFuelPct(78 - (tSec * 1.8));
-          sounds.updateLaunchAudio(alt, vel, 'MAX_Q');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'MAX_Q');
         }
-        // --- PHASE G: HIGH ALTITUDE MESOSPHERE (T+8.5 to T+10.0s) ---
+        // --- PHASE G: HIGH ALTITUDE (T+8.5 to T+10.0s) ---
         else if (tSec < 10.0) {
           const t = (tSec - 8.5) / 3.0;
-          const alt = 52.0 + (128.0 - 52.0) * t;
-          const vel = 8600 + (19400 - 8600) * t;
+          targetAlt = 52.0 + (128.0 - 52.0) * t;
+          targetVel = 8600 + (19400 - 8600) * t;
+          targetAcc = 3.4; targetQ = 7.5; targetFuel = 65 - (tSec * 2.0);
           setDetailedPhase('HIGH_ALTITUDE');
           setLaunchStatus('STAGING');
           setFlightPhaseText('MESOSPHERE TRANSITION // APPROACHING FIRST STAGE MECO');
           setChamberStatus('104.5% NOMINAL (THROTTLED UP)');
           setGuidanceMode('CLOSED LOOP VACUUM OPTIMIZATION');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(3.4);
-          setDynamicPressureKPa(7.5);
-          setFuelPct(65 - (tSec * 2.0));
-          sounds.updateLaunchAudio(alt, vel, 'HIGH_ALTITUDE');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'HIGH_ALTITUDE');
         }
         // --- PHASE H: STAGE SEPARATION (T+10.0 to T+11.5s) ---
         else if (tSec < 11.5) {
           const t = (tSec - 8.5) / 3.0;
-          const alt = 52.0 + (128.0 - 52.0) * t;
-          const vel = 8600 + (19400 - 8600) * t;
+          targetAlt = 52.0 + (128.0 - 52.0) * t;
+          targetVel = 8600 + (19400 - 8600) * t;
+          targetAcc = 0.2; targetQ = 0.2; targetFuel = 52;
           setDetailedPhase('STAGE_SEPARATION');
           setLaunchStatus('STAGING');
           setFlightPhaseText('FIRST STAGE MECO // BOOSTER SEPARATION CONFIRMED');
           setChamberStatus('INTERSTAGE CUTOFF 0.0%');
           setGuidanceMode('PNEUMATIC SEPARATION LOCK');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(0.2); // Free fall during separation
-          setDynamicPressureKPa(0.2);
-          setFuelPct(52);
-          sounds.updateLaunchAudio(alt, vel, 'STAGE_SEPARATION');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'STAGE_SEPARATION');
         }
-        // --- PHASE I: UPPER STAGE VACUUM BURN (T+11.5 to T+13.0s) ---
+        // --- PHASE I: UPPER STAGE (T+11.5 to T+13.0s) ---
         else if (tSec < 13.0) {
           const t = (tSec - 11.5) / 2.5;
-          const alt = 128.0 + (200.0 - 128.0) * Math.sin((t * Math.PI) / 2);
-          const vel = 19400 + (28000 - 19400) * Math.sin((t * Math.PI) / 2);
+          targetAlt = 128.0 + (200.0 - 128.0) * Math.sin((t * Math.PI) / 2);
+          targetVel = 19400 + (28000 - 19400) * Math.sin((t * Math.PI) / 2);
+          targetAcc = 2.2; targetQ = 0; targetFuel = 44;
           setDetailedPhase('UPPER_STAGE');
           setLaunchStatus('STAGING');
           setFlightPhaseText('SECOND STAGE VACUUM IGNITION // FAIRING JETTISONED');
           setChamberStatus('UPPER STAGE 100% NOMINAL (VACUUM)');
           setGuidanceMode('ORBITAL PLANE INSERTION');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(2.2);
-          setDynamicPressureKPa(0.0);
-          setFuelPct(44);
-          sounds.updateLaunchAudio(alt, vel, 'UPPER_STAGE');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'UPPER_STAGE');
         }
         // --- PHASE J: ORBIT INSERTION (T+13.0 to T+14.0s) ---
         else if (tSec < 14.0) {
           const t = (tSec - 11.5) / 2.5;
-          const alt = 128.0 + (200.0 - 128.0) * Math.sin((t * Math.PI) / 2);
-          const vel = 19400 + (28000 - 19400) * Math.sin((t * Math.PI) / 2);
+          targetAlt = 128.0 + (200.0 - 128.0) * Math.sin((t * Math.PI) / 2);
+          targetVel = 19400 + (28000 - 19400) * Math.sin((t * Math.PI) / 2);
+          targetAcc = 2.6; targetQ = 0; targetFuel = 36;
           setDetailedPhase('ORBIT_INSERTION');
           setLaunchStatus('STAGING');
           setFlightPhaseText('ORBIT INSERTION BURN // CIRCULARIZING 200 KM LEO');
           setChamberStatus('SECO IMMINENT (92.0% THRUST)');
           setGuidanceMode('ORBITAL VELOCITY STABILIZED');
           setRangeSafety('GREEN');
-          setAltitudeKm(alt);
-          setVelocityKmh(vel);
-          setAccelerationG(2.6);
-          setDynamicPressureKPa(0.0);
-          setFuelPct(36);
-          sounds.updateLaunchAudio(alt, vel, 'ORBIT_INSERTION');
+          sounds.updateLaunchAudio(targetAlt, targetVel, 'ORBIT_INSERTION');
         }
-        // --- PHASE K: ORBIT ACHIEVED (T+14.0 to T+16.5s) ---
+        // --- PHASE K: ORBIT ACHIEVED (T+14.0+) ---
         else if (tSec < 16.5) {
           if (detailedPhase !== 'ORBIT_ACHIEVED') {
             setDetailedPhase('ORBIT_ACHIEVED');
@@ -319,26 +306,46 @@ export const LaunchSequenceScreen: React.FC = () => {
             setGuidanceMode('STATIONARY ATTITUDE HOLD');
             setRangeSafety('GREEN');
             setShowOrbitBanner(true);
-            setAltitudeKm(200.0);
-            setVelocityKmh(28000);
-            setAccelerationG(0.0);
-            setDynamicPressureKPa(0.0);
-            setFuelPct(32);
             sounds.stopLaunchAudio(0.8);
             sounds.playOrbitAchievedSound();
             sounds.startOrbitAmbience();
           }
-        } 
+          targetAlt = 200.0; targetVel = 28000; targetAcc = 0; targetQ = 0; targetFuel = 32;
+        }
         // --- TRANSITION TO MISSION CONTROL ---
         else {
           finishAndTransitionToOrbit();
           return;
         }
 
-        // Commit latest synchronized telemetry to store
+        // ── Smooth telemetry interpolation (lerp in rAF, no React re-render per frame) ──
+        const lerpSpeed = Math.min(1, deltaRealSec * effectiveSpeed * 5);
+        dispAltRef.current  += (targetAlt  - dispAltRef.current)  * lerpSpeed;
+        dispVelRef.current  += (targetVel  - dispVelRef.current)  * lerpSpeed;
+        dispAccRef.current  += (targetAcc  - dispAccRef.current)  * lerpSpeed;
+        dispQRef.current    += (targetQ    - dispQRef.current)    * lerpSpeed;
+        dispFuelRef.current += (targetFuel - dispFuelRef.current) * lerpSpeed;
+
+        // Flush display state to React ~10fps to keep panel smooth without spam
+        dispFlushRef.current += deltaRealSec;
+        if (dispFlushRef.current >= 0.08) {
+          dispFlushRef.current = 0;
+          setDispAlt(dispAltRef.current);
+          setDispVel(dispVelRef.current);
+          setDispAcc(dispAccRef.current);
+          setDispQ(dispQRef.current);
+          setDispFuel(dispFuelRef.current);
+          // Also sync raw values for canvas props
+          setAltitudeKm(targetAlt);
+          setVelocityKmh(targetVel);
+          setAccelerationG(targetAcc);
+          setDynamicPressureKPa(targetQ);
+          setFuelPct(targetFuel);
+        }
+
         updateLaunchTelemetry(
-          simTimeSecRef.current >= 14.0 ? 200.0 : altitudeKm,
-          simTimeSecRef.current >= 14.0 ? 28000 : Math.round(velocityKmh)
+          tSec >= 14.0 ? 200.0 : targetAlt,
+          tSec >= 14.0 ? 28000 : Math.round(targetVel)
         );
       }
 
@@ -348,19 +355,15 @@ export const LaunchSequenceScreen: React.FC = () => {
     animFrameRef.current = requestAnimationFrame(tick);
 
     return () => {
-      if (animFrameRef.current) {
-        cancelAnimationFrame(animFrameRef.current);
-      }
+      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
     };
   }, [
-    isPaused, 
-    simSpeed, 
+    isPaused,
+    simSpeed,
     isFastForwarding,
-    detailedPhase, 
-    altitudeKm, 
-    velocityKmh, 
-    setLaunchStatus, 
-    updateLaunchTelemetry, 
+    detailedPhase,
+    setLaunchStatus,
+    updateLaunchTelemetry,
     finishAndTransitionToOrbit
   ]);
 
@@ -449,27 +452,54 @@ export const LaunchSequenceScreen: React.FC = () => {
           reducedMotion={reducedMotion}
         />
 
-        {/* Central Terminal Countdown Display (when counting) */}
-        {detailedPhase === 'PRELAUNCH' && count > 0 && (
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <motion.div
-              key={count}
-              initial={{ scale: 1.25, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              className="text-center p-5 sm:p-6 rounded-2xl bg-black/60 backdrop-blur-md border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.3)]"
-            >
-              <div className="text-[10px] sm:text-xs font-mono text-cyan-400 tracking-widest uppercase">
-                TERMINAL COUNTDOWN
-              </div>
-              <div className="text-5xl sm:text-7xl font-black font-mono text-white tracking-wider my-1 drop-shadow-[0_0_30px_rgba(255,255,255,0.4)]">
-                T-{count}
-              </div>
-              <div className="text-[10px] sm:text-xs font-mono text-slate-400">
-                AUTONOMOUS FLIGHT CONTROLLER ARMED
-              </div>
-            </motion.div>
+        {/* ── COUNTDOWN HUD ── Upper-center, never covers the rocket ── */}
+        {(detailedPhase === 'PRELAUNCH' || detailedPhase === 'ENGINE_START') && count > 0 && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex flex-col items-center">
+            {/* Thin top label */}
+            <div className="text-[9px] sm:text-[10px] font-mono tracking-[0.25em] text-cyan-400/80 uppercase mb-0.5">
+              {detailedPhase === 'ENGINE_START' ? 'ENGINE START SEQ' : 'TERMINAL COUNTDOWN'}
+            </div>
+
+            {/* Count number with smooth key-based fade+scale */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={count}
+                initial={{ opacity: 0, scale: 1.18, y: -4 }}
+                animate={{ opacity: 1,  scale: 1.0,  y: 0  }}
+                exit={{    opacity: 0,  scale: 0.84, y: 4  }}
+                transition={{ duration: 0.22, ease: 'easeOut' }}
+                className={`font-black font-mono tracking-wider leading-none ${
+                  count <= 3
+                    ? 'text-4xl sm:text-5xl text-white drop-shadow-[0_0_18px_rgba(255,255,255,0.55)]'
+                    : 'text-3xl sm:text-4xl text-cyan-300 drop-shadow-[0_0_12px_rgba(6,182,212,0.6)]'
+                }`}
+              >
+                T‑{count}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Thin sub-label */}
+            <div className="text-[8px] font-mono text-slate-500 tracking-widest mt-0.5 uppercase">
+              {count <= 3 ? 'IGNITION IMMINENT' : 'AUTO FLIGHT CTRL ARMED'}
+            </div>
+          </div>
+        )}
+
+        {/* Engine ignition / liftoff phase label — top HUD */}
+        {(detailedPhase === 'IGNITION' || detailedPhase === 'LIFTOFF') && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 pointer-events-none z-30 flex flex-col items-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={detailedPhase}
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{    opacity: 0, y:  6 }}
+                transition={{ duration: 0.3 }}
+                className="text-[10px] sm:text-xs font-mono font-bold tracking-[0.2em] text-orange-300 drop-shadow-[0_0_10px_rgba(251,146,60,0.7)] uppercase"
+              >
+                {detailedPhase === 'IGNITION' ? '▲ MAIN ENGINE IGNITION' : '▲ LIFTOFF'}
+              </motion.div>
+            </AnimatePresence>
           </div>
         )}
 
@@ -532,6 +562,8 @@ export const LaunchSequenceScreen: React.FC = () => {
 
       {/* =========================================================================
           3. REAL-TIME SYNCHRONIZED TELEMETRY DASHBOARD STRIP
+          Telemetry values use smoothly-interpolated display refs (dispAlt/Vel/Acc/Q/Fuel)
+          updated via lerp in the rAF loop — no abrupt jumps.
           ========================================================================= */}
       <div className="shrink-0 p-2.5 sm:p-3 rounded-xl bg-slate-950/90 border border-slate-800 grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2 text-xs font-mono">
         {/* Metric 1: Altitude */}
@@ -541,7 +573,7 @@ export const LaunchSequenceScreen: React.FC = () => {
             <span>ALTITUDE</span>
           </div>
           <div className="text-white font-bold text-sm sm:text-base mt-0.5">
-            {altitudeKm > 0 ? `${altitudeKm.toFixed(1)} km` : '0.0 km (SL)'}
+            {dispAlt > 0.05 ? `${dispAlt.toFixed(1)} km` : '0.0 km (SL)'}
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Target: 200.0 km</div>
         </div>
@@ -553,16 +585,16 @@ export const LaunchSequenceScreen: React.FC = () => {
             <span>VELOCITY</span>
           </div>
           <div className="text-cyan-400 font-bold text-sm sm:text-base mt-0.5">
-            {velocityKmh > 0 ? `${Math.round(velocityKmh).toLocaleString()} km/h` : '0 km/h'}
+            {dispVel > 1 ? `${Math.round(dispVel).toLocaleString()} km/h` : '0 km/h'}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5">Mach {(velocityKmh / 1234.8).toFixed(1)}</div>
+          <div className="text-[10px] text-slate-500 mt-0.5">Mach {(dispVel / 1234.8).toFixed(1)}</div>
         </div>
 
         {/* Metric 3: Acceleration / G-Force */}
         <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
           <div className="text-slate-500 text-[10px]">ACCELERATION</div>
           <div className="text-amber-400 font-bold text-sm sm:text-base mt-0.5">
-            {accelerationG.toFixed(2)} G
+            {dispAcc.toFixed(2)} G
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Structural: 4.5G Max</div>
         </div>
@@ -571,7 +603,7 @@ export const LaunchSequenceScreen: React.FC = () => {
         <div className="p-2 rounded-lg bg-slate-900 border border-slate-800">
           <div className="text-slate-500 text-[10px]">DYNAMIC PRESSURE (Q)</div>
           <div className="text-sky-300 font-bold text-sm sm:text-base mt-0.5">
-            {dynamicPressureKPa.toFixed(1)} kPa
+            {dispQ.toFixed(1)} kPa
           </div>
           <div className="text-[10px] text-slate-500 mt-0.5">Max-Q Limit: 35 kPa</div>
         </div>
@@ -585,7 +617,7 @@ export const LaunchSequenceScreen: React.FC = () => {
           <div className="text-emerald-400 font-bold text-sm sm:text-base mt-0.5 truncate">
             {chamberStatus}
           </div>
-          <div className="text-[10px] text-slate-500 mt-0.5 truncate">Fuel: {fuelPct.toFixed(0)}%</div>
+          <div className="text-[10px] text-slate-500 mt-0.5 truncate">Fuel: {dispFuel.toFixed(0)}%</div>
         </div>
 
         {/* Metric 6: Guidance Mode */}

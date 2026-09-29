@@ -82,14 +82,24 @@ export const NASA_PROVENANCE_CATALOG: ProvenanceRecord[] = [
     notes: 'Informs 8.4 GHz X/Ka-band signal carrier locks, ground receiver dishes, and carrier drop recovery procedures.'
   },
   {
-    title: 'NASA Blue Marble Global Terrestrial Imagery',
-    datasetName: 'MODIS/Terra Blue Marble Next Generation Global Mosaic',
-    mission: 'NASA Earth Observing System (EOS) / Terra & Aqua',
-    archive: 'NASA Earth Observatory / Visible Earth (GSFC)',
+    title: 'NASA Blue Marble Earth Cartographic Textures',
+    datasetName: 'earth_atmos_2048.jpg / earth_specular_2048.jpg / earth_normal_2048.jpg',
+    mission: 'NASA Earth Observing System (EOS) / Terra & Aqua (MODIS Blue Marble)',
+    archive: 'three.js examples — mrdoob/three.js (GitHub, MIT License) — original data: NASA Earth Observatory / Visible Earth (GSFC)',
     lastRetrieved: '2026-09-29',
     dataType: 'image',
     officialSourceUrl: 'https://visibleearth.nasa.gov/collection/1484/blue-marble',
-    notes: 'Used to render authentic Earth ocean gradients, continental vegetation patterns, and Rayleigh scattering atmospheric limb.'
+    notes: 'Real 2K equirectangular Earth surface texture (earth_atmos_2048.jpg), ocean specular mask (earth_specular_2048.jpg), and surface normal map (earth_normal_2048.jpg) served from /public/textures/. Source imagery is NASA Blue Marble composite derived from MODIS Terra & Aqua observations. Files distributed via three.js example assets.'
+  },
+  {
+    title: 'Real Earth Atmospheric Cloud Layer',
+    datasetName: 'fair_clouds_4k.png',
+    mission: 'NASA/NOAA meteorological composite',
+    archive: 'turban/webgl-earth (GitHub, MIT License) — cloud alpha map derived from NASA GOES / NOAA satellite imagery composites',
+    lastRetrieved: '2026-09-29',
+    dataType: 'image',
+    officialSourceUrl: 'https://github.com/turban/webgl-earth',
+    notes: 'Real 4K equirectangular cloud layer texture used as alphaMap on the separate cloud sphere (radius 1.012 × Earth). Opacity 0.28 — transparent thin atmospheric layer, not painted onto the surface. Served from /public/textures/earth_clouds_4k.png.'
   },
   {
     title: 'NASA LRO WAC Global Lunar Cartographic Mosaic',
@@ -110,5 +120,45 @@ export const NASA_PROVENANCE_CATALOG: ProvenanceRecord[] = [
     dataType: 'image',
     officialSourceUrl: 'https://pds-geosciences.wustl.edu/missions/mgs/mola.htm',
     notes: 'Informs realistic Martian terrain features including Syrtis Major volcanic shields, Valles Marineris canyon rifts, and polar ice caps.'
+  },
+  {
+    title: 'CelesTrak Orbital Ephemeris & NORAD TLE Datasets',
+    datasetName: 'CelesTrak General Perturbations (GP) Orbital Elements Catalog',
+    mission: 'International Space Station (ISS) & Hubble Space Telescope (HST)',
+    archive: 'CelesTrak / Space-Track.org / NASA Tracking Network',
+    lastRetrieved: '2026-09-29',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://celestrak.org/',
+    notes: 'Authentic orbital inclination, semi-major axis, nodal precession, and mean motion parameters powering the Mission Control multi-satellite tracking simulation.'
+  },
+  {
+    title: 'USGS / NASA Landsat-9 Mission Operations & Ephemeris',
+    datasetName: 'Landsat 9 Operational Land Imager 2 (OLI-2) Orbital Elements',
+    mission: 'Landsat 9 / USGS-NASA Joint Land Remote Sensing Program',
+    archive: 'USGS Earth Resources Observation and Science (EROS) Center',
+    lastRetrieved: '2026-09-29',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://landsat.gsfc.nasa.gov/satellites/landsat-9/',
+    notes: 'Provides 705 km Sun-Synchronous Orbit (SSO) inclination (98.2°), repeating ground track, and 98.9 min orbital period data.'
+  },
+  {
+    title: 'ESA Copernicus Sentinel-2 Multi-Spectral Ephemeris',
+    datasetName: 'Copernicus Sentinel-2 Precise Orbit Determination (POD) Files',
+    mission: 'Copernicus Sentinel-2 Constellation (2A/2B)',
+    archive: 'ESA Copernicus Open Access Hub / European Space Agency',
+    lastRetrieved: '2026-09-29',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-2',
+    notes: 'Authentic 786 km polar sun-synchronous orbital characteristics (98.62° inclination, 100.6 min period) for European environmental Earth observation.'
+  },
+  {
+    title: 'NOAA Joint Polar Satellite System (JPSS) NOAA-20 Ephemeris',
+    datasetName: 'NOAA-20 (JPSS-1) Flight Dynamics Orbital Elements',
+    mission: 'Joint Polar Satellite System (JPSS-1 / NOAA-20)',
+    archive: 'NOAA National Environmental Satellite, Data, and Information Service (NESDIS)',
+    lastRetrieved: '2026-09-29',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://www.nesdis.noaa.gov/our-satellites/currently-flying/joint-polar-satellite-system',
+    notes: 'Provides 824 km Sun-Synchronous Orbit parameters (98.7° inclination, 101.4 min period) for global numerical weather prediction.'
   }
 ];
