@@ -8,7 +8,9 @@ export type ScreenState =
   | 'mission_control' 
   | 'debrief' 
   | 'leaderboard' 
-  | 'tutorial';
+  | 'tutorial'
+  | 'data_explorer'
+  | 'data_sources';
 
 export type MissionDifficulty = 'Easy' | 'Medium' | 'Hard';
 
@@ -65,6 +67,10 @@ export interface SpacecraftComponent {
   description: string;
   nasaRef?: string;
   iconName: string;
+  isRealNasaInstrument?: boolean;
+  pdsDatasetId?: string;
+  realMassKg?: number;
+  realPowerW?: number;
 }
 
 export interface SynergyBonus {
@@ -119,6 +125,8 @@ export interface MissionEvent {
   category: 'radiation' | 'comm' | 'power' | 'trajectory' | 'discovery' | 'hardware';
   severity: 'low' | 'medium' | 'critical';
   description: string;
+  realWorldContext?: string;
+  nasaSourceRef?: string;
   triggeredAtProgress: number; // between 0.15 and 0.85
   options: MissionEventOption[];
 }

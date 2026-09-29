@@ -12,6 +12,8 @@ import { LauncherTrajectoryScreen } from '@/components/screens/LauncherTrajector
 import { LaunchSequenceScreen } from '@/components/screens/LaunchSequenceScreen';
 import { MissionControlScreen } from '@/components/screens/MissionControlScreen';
 import { DebriefScreen } from '@/components/screens/DebriefScreen';
+import { DataExplorerScreen } from '@/components/screens/DataExplorerScreen';
+import { DataSourcesScreen } from '@/components/screens/DataSourcesScreen';
 import { TutorialModal } from '@/components/modals/TutorialModal';
 import { LeaderboardModal } from '@/components/modals/LeaderboardModal';
 import { AchievementsModal } from '@/components/modals/AchievementsModal';
@@ -57,6 +59,10 @@ export default function GameMainPage() {
             onOpenLeaderboard={() => setIsLeaderboardOpen(true)}
           />
         );
+      case 'data_explorer':
+        return <DataExplorerScreen />;
+      case 'data_sources':
+        return <DataSourcesScreen />;
       default:
         return (
           <TitleScreen

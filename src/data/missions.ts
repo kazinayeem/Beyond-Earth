@@ -12,7 +12,7 @@ export const MISSIONS: MissionData[] = [
     difficulty: 'Easy',
     rewardCredits: 1000,
     unlocked: true,
-    budget: 500, // $500M
+    budget: 700, // $700M (Flagship exploration envelope)
     maxMassKg: 1000,
     maxPowerW: 500,
     missionWindowDays: 28,

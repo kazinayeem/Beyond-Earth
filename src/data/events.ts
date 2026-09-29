@@ -7,6 +7,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
     category: 'radiation',
     severity: 'critical',
     description: 'The Space Weather Prediction Center alerts that a Class-X solar flare has erupted directly along our flight path. Intense proton flux is inundating spacecraft avionics and sensitive camera sensors.',
+    realWorldContext: 'Coronal Mass Ejections (CMEs) accelerate solar energetic protons up to relativistic speeds. Unshielded integrated circuits risk single-event upsets (SEUs) and latch-ups. NASA missions like LRO use CRaTER detectors to monitor ionizing dosage and orient solar arrays edge-on during peak proton storms.',
+    nasaSourceRef: 'NASA Heliophysics DONKI & LRO CRaTER PDS Archive (University of New Hampshire)',
     triggeredAtProgress: 0.28,
     options: [
       {
@@ -47,6 +49,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
     category: 'comm',
     severity: 'medium',
     description: 'Goldstone ground station reports signal loss. Spacecraft telemetry stream dropped from 94% to 18%. An antenna gimbal misstep or thermal warpage is suspected.',
+    realWorldContext: 'Interplanetary spacecraft communicate through the NASA Deep Space Network (DSN) complexes in Goldstone, Madrid, and Canberra. Extreme thermal gradients during orbital day/night transitions can cause parabolic antenna dish thermal deflection or transponder frequency drift, demanding re-pointing maneuvers.',
+    nasaSourceRef: 'NASA Deep Space Network (DSN) Telemetry Standard (JPL D-16838)',
     triggeredAtProgress: 0.45,
     options: [
       {
@@ -87,6 +91,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
     category: 'power',
     severity: 'critical',
     description: 'A transient short circuit occurred on the primary power distribution bus. Internal battery temperature is climbing and inverter efficiency has degraded.',
+    realWorldContext: 'Spacecraft Electrical Power Subsystems (EPS) utilize shunt regulators and Li-Ion battery charge management units. When high-power active instruments (such as synthetic aperture radars) demand burst wattage, solar panel shading or thermal stresses can trigger transient over-current relays.',
+    nasaSourceRef: 'NASA Spacecraft Power System Design Guidelines (NASA-STD-4001)',
     triggeredAtProgress: 0.62,
     options: [
       {
@@ -127,6 +133,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
     category: 'discovery',
     severity: 'low',
     description: 'Infrared telemetry reveals an anomalous thermal hotspot and unusual volatile gas venting inside an unexplored polar crater rim. This could represent a monumental planetary discovery!',
+    realWorldContext: 'NASA Diviner and Mini-RF radar observations discovered that permanently shadowed regions (PSRs) at the lunar poles act as cryogenic cold traps, dipping to 25 Kelvin (-248°C) and harboring tens of billions of kilograms of water ice, hydroxyl, and methane volatiles.',
+    nasaSourceRef: 'NASA PDS Geosciences Node - LRO Diviner & Mini-RF Volatiles Science Report',
     triggeredAtProgress: 0.76,
     options: [
       {
@@ -166,6 +174,8 @@ export const MISSION_EVENTS: MissionEvent[] = [
     category: 'hardware',
     severity: 'medium',
     description: 'Accelerometer spikes confirm a high-velocity particle strike on the outer thermal blanket. Pressure sensors on propellant tank B show slight vibration.',
+    realWorldContext: 'Interplanetary space contains hypervelocity micrometeoroids traveling at 11 to 72 km/s. NASA spacecraft use Multi-Layer Insulation (MLI) blankets and Whipple shielding to vaporize incoming particles upon impact, preventing puncture of pressurized propellant tanks.',
+    nasaSourceRef: 'NASA Orbital Debris Program Office (ODPO) & Apollo Thermal Blanket Post-Flight Reports',
     triggeredAtProgress: 0.84,
     options: [
       {

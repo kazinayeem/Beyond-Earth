@@ -94,9 +94,19 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         <button
           onClick={() => {
             sounds.playClick();
+            setScreen('data_explorer');
+          }}
+          className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-mono text-sm tracking-wider transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] flex items-center justify-center space-x-2"
+        >
+          <span>EXPLORE NASA DATA</span>
+        </button>
+
+        <button
+          onClick={() => {
+            sounds.playClick();
             onOpenTutorial();
           }}
-          className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-cyan-500/30 bg-slate-900/80 hover:bg-slate-800 text-cyan-300 hover:text-white font-mono text-sm tracking-wider transition-all"
+          className="w-full sm:w-auto px-5 py-3.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white font-mono text-sm tracking-wider transition-all"
         >
           HOW TO PLAY
         </button>
@@ -107,7 +117,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.6, duration: 0.8 }}
-        className="mt-8 flex items-center space-x-6 text-xs font-mono text-slate-400"
+        className="mt-8 flex flex-wrap justify-center items-center gap-x-5 gap-y-2 text-xs font-mono text-slate-400"
       >
         <button
           onClick={() => {
@@ -119,7 +129,18 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           <Compass className="w-3.5 h-3.5 text-cyan-400" />
           <span>MISSIONS</span>
         </button>
-        <span className="text-slate-700">|</span>
+        <span className="text-slate-700 hidden sm:inline">|</span>
+        <button
+          onClick={() => {
+            sounds.playClick();
+            setScreen('data_sources');
+          }}
+          className="hover:text-cyan-300 transition-colors flex items-center space-x-1"
+        >
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          <span>NASA DATA SOURCES</span>
+        </button>
+        <span className="text-slate-700 hidden sm:inline">|</span>
         <button
           onClick={() => {
             sounds.playClick();
@@ -130,7 +151,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           <Trophy className="w-3.5 h-3.5 text-amber-400" />
           <span>LEADERBOARD</span>
         </button>
-        <span className="text-slate-700">|</span>
+        <span className="text-slate-700 hidden sm:inline">|</span>
         <button
           onClick={() => {
             sounds.playClick();

@@ -90,6 +90,40 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
           </button>
 
+          {/* NASA Data Explorer */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setScreen('data_explorer');
+            }}
+            className={`p-2 rounded-lg border transition-colors flex items-center space-x-1 ${
+              screen === 'data_explorer'
+                ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                : 'bg-slate-900 border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white'
+            }`}
+            title="Explore NASA Datasets"
+          >
+            <Database className="w-4 h-4 text-cyan-400" />
+            <span className="hidden xl:inline text-[11px] font-mono font-bold text-cyan-300">NASA DATA</span>
+          </button>
+
+          {/* NASA Data Sources */}
+          <button
+            onClick={() => {
+              sounds.playClick();
+              setScreen('data_sources');
+            }}
+            className={`p-2 rounded-lg border transition-colors flex items-center space-x-1 ${
+              screen === 'data_sources'
+                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/50'
+                : 'bg-slate-900 border-slate-800 hover:border-emerald-500/40 text-slate-300 hover:text-white'
+            }`}
+            title="NASA Data Provenance & Sources"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span className="hidden xl:inline text-[11px] font-mono text-emerald-300">SOURCES</span>
+          </button>
+
           {/* Achievements Button */}
           <button
             onClick={() => {

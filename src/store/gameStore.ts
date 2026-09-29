@@ -30,6 +30,8 @@ interface GameState {
   // Sound & Settings
   isMuted: boolean;
   toggleMute: () => void;
+  reducedMotion: boolean;
+  toggleReducedMotion: () => void;
 
   // Player Progression
   credits: number;
@@ -47,6 +49,7 @@ interface GameState {
   toggleComponent: (componentId: string) => void;
   clearComponents: () => void;
   loadRecommendedBuild: () => void;
+  loadLroBuild: () => void;
 
   // Launch Vehicle & Trajectory
   selectedLauncherId: string;
@@ -307,6 +310,12 @@ export const useGameStore = create<GameState>((set, get) => {
       set({ isMuted: muted });
     },
 
+    reducedMotion: false,
+    toggleReducedMotion: () => {
+      sounds.playClick();
+      set((state) => ({ reducedMotion: !state.reducedMotion }));
+    },
+
     credits: initialCredits,
     unlockedMissionIds: initialUnlocked,
     achievements: initialAch,
@@ -368,6 +377,25 @@ export const useGameStore = create<GameState>((set, get) => {
         'cam-hires',
         'inst-spectrometer',
         'inst-altimeter',
+        'pwr-solar-adv',
+        'pwr-battery-std',
+        'comm-high-gain',
+        'prop-medium',
+        'therm-blanket',
+        'nav-imu'
+      ];
+      const stats = calculateStats(next, get().activeMission, get().selectedLauncherId, get().selectedTrajectoryId);
+      set({ selectedComponentIds: next, ...stats });
+    },
+
+    loadLroBuild: () => {
+      sounds.playToggle();
+      const next = [
+        'struct-light',
+        'nasa-inst-lroc',
+        'nasa-inst-lola',
+        'nasa-inst-diviner',
+        'nasa-inst-minirf',
         'pwr-solar-adv',
         'pwr-battery-std',
         'comm-high-gain',

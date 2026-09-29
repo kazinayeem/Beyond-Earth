@@ -271,17 +271,60 @@ export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => 
           )}
         </div>
 
+        {/* Section: WHAT REAL NASA DATA INFORMED */}
+        <div className="my-6 p-4 rounded-xl bg-slate-950/70 border border-cyan-500/20 text-xs">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-800 font-mono text-cyan-300 font-bold">
+            <span className="flex items-center space-x-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span>WHAT REAL NASA DATA INFORMED</span>
+            </span>
+            <span className="text-slate-500 text-[10px]">SCIENTIFIC REALITY</span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3 font-sans text-slate-300">
+            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="font-mono text-white font-semibold text-xs mb-1">Polar Cold Traps (PSRs)</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                NASA Diviner &amp; Mini-RF confirmed water ice deposits preserved at 25 K in shadowed craters like Shackleton and Faustini.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="font-mono text-white font-semibold text-xs mb-1">Deep Space Radiation</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                LRO CRaTER detectors measured 60 µSv/hr cosmic ray dosage, verifying proton storm risks to deep-space avionics.
+              </p>
+            </div>
+            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-800">
+              <div className="font-mono text-white font-semibold text-xs mb-1">Global 3D Geodetics</div>
+              <p className="text-[11px] text-slate-400 leading-relaxed">
+                LOLA laser altimetry supplied the millimeter-accurate topography models enabling pinpoint autonomous landing site validation.
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Action Controls */}
         <div className="pt-6 border-t border-cyan-500/20 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <button
-            onClick={() => {
-              sounds.playClick();
-              onOpenLeaderboard();
-            }}
-            className="w-full sm:w-auto px-5 py-3 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 text-amber-300 font-mono text-xs tracking-wider transition-all"
-          >
-            VIEW LEADERBOARD
-          </button>
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => {
+                sounds.playClick();
+                onOpenLeaderboard();
+              }}
+              className="px-4 py-3 rounded-xl border border-amber-500/40 bg-amber-950/20 hover:bg-amber-950/40 text-amber-300 font-mono text-xs tracking-wider transition-all"
+            >
+              VIEW LEADERBOARD
+            </button>
+            <button
+              onClick={() => {
+                sounds.playClick();
+                setScreen('data_sources');
+              }}
+              className="px-4 py-3 rounded-xl border border-cyan-500/40 bg-cyan-950/30 hover:bg-cyan-900/50 text-cyan-300 font-mono text-xs tracking-wider transition-all"
+            >
+              NASA DATA SOURCES
+            </button>
+          </div>
 
           <button
             onClick={() => {

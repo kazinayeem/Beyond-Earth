@@ -63,14 +63,36 @@ export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption })
           </div>
 
           {/* Description */}
-          <div className="my-5 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-sm leading-relaxed text-slate-300">
+          <div className="my-4 p-4 rounded-xl bg-slate-950/60 border border-slate-800 text-sm leading-relaxed text-slate-300">
             <p>{event.description}</p>
           </div>
 
+          {/* Real World Scientific Context (NASA PDS / SWPC) */}
+          {event.realWorldContext && (
+            <div className="mb-4 p-3.5 rounded-xl bg-cyan-950/40 border border-cyan-500/30 text-xs">
+              <div className="flex items-center justify-between font-mono text-cyan-300 font-bold mb-1">
+                <span className="flex items-center space-x-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>REAL-WORLD SCIENTIFIC CONTEXT (NASA DATA)</span>
+                </span>
+                <span className="text-[10px] text-cyan-400/80">AUTHENTIC PHENOMENON</span>
+              </div>
+              <p className="text-slate-300 leading-relaxed font-sans">{event.realWorldContext}</p>
+              {event.nasaSourceRef && (
+                <div className="mt-1.5 pt-1.5 border-t border-cyan-500/20 text-[10px] font-mono text-cyan-400/70">
+                  Reference: {event.nasaSourceRef}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Options Header */}
-          <div className="text-xs font-mono text-cyan-400/90 mb-3 flex items-center space-x-2">
-            <AlertTriangle className="w-4 h-4 text-cyan-400" />
-            <span>SELECT ENGINEERING CONTINGENCY ACTION:</span>
+          <div className="text-xs font-mono text-cyan-400/90 mb-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="w-4 h-4 text-cyan-400" />
+              <span>SELECT ENGINEERING CONTINGENCY ACTION:</span>
+            </div>
+            <span className="text-[10px] text-slate-500 font-normal">SIMULATION CHOICE</span>
           </div>
 
           {/* Options Grid */}

@@ -6,6 +6,8 @@ import { useGameStore } from '@/store/gameStore';
 import { SPACECRAFT_COMPONENTS } from '@/data/components';
 import { ComponentCategory, SpacecraftComponent } from '@/types/game';
 import { SpacecraftBlueprintCanvas } from '@/components/canvas/SpacecraftBlueprintCanvas';
+import { DataProvenanceModal } from '@/components/modals/DataProvenanceModal';
+import { DataSource } from '@/types/nasa';
 import { 
   Box, 
   Camera, 
@@ -25,7 +27,9 @@ import {
   Weight, 
   Zap, 
   Gauge, 
-  ShieldAlert 
+  ShieldAlert,
+  Database,
+  Radio
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
@@ -46,6 +50,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
     toggleComponent,
     clearComponents,
     loadRecommendedBuild,
+    loadLroBuild,
     totalCostM,
     totalMassKg,
     powerGeneratedW,
@@ -67,12 +72,40 @@ export const SpacecraftBuilderScreen: React.FC = () => {
   } = useGameStore();
 
   const [activeCategory, setActiveCategory] = useState<ComponentCategory>('instruments');
+  const [provenanceModal, setProvenanceModal] = useState<DataSource | null>(null);
+  const [provenanceTitle, setProvenanceTitle] = useState('');
 
   const filteredComponents = SPACECRAFT_COMPONENTS.filter((c) => c.category === activeCategory);
   const selectedComponents = SPACECRAFT_COMPONENTS.filter((c) => selectedComponentIds.includes(c.id));
 
+  const handleOpenProvenance = (e: React.MouseEvent, comp: SpacecraftComponent) => {
+    e.stopPropagation();
+    sounds.playClick();
+    setProvenanceTitle(`${comp.name} Provenance`);
+    setProvenanceModal({
+      sourceName: comp.nasaRef || 'NASA Planetary Data System (PDS)',
+      sourceType: 'NASA_PDS',
+      datasetName: comp.pdsDatasetId || comp.name,
+      sourceUrl: comp.isRealNasaInstrument 
+        ? 'https://pds-geosciences.wustl.edu/missions/lro/' 
+        : 'https://nssdc.gsfc.nasa.gov/',
+      retrievedAt: '2026-09-29T12:00:00Z',
+      archiveNode: 'NASA PDS Imaging / Geosciences Node',
+      doiOrId: comp.pdsDatasetId || 'NASA-PDS-LRO',
+      isSimulated: !comp.isRealNasaInstrument
+    });
+  };
+
   return (
     <div className="relative z-10 max-w-7xl mx-auto px-4 py-6 select-none flex flex-col min-h-[calc(100vh-80px)] justify-between">
+      {/* Data Provenance Modal */}
+      <DataProvenanceModal
+        isOpen={provenanceModal !== null}
+        onClose={() => setProvenanceModal(null)}
+        metadata={provenanceModal}
+        datasetTitle={provenanceTitle}
+      />
+
       {/* Top Header & Presets */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-cyan-500/20 gap-3">
@@ -97,6 +130,14 @@ export const SpacecraftBuilderScreen: React.FC = () => {
 
           {/* Quick Presets */}
           <div className="flex items-center space-x-2 text-xs font-mono">
+            <button
+              onClick={loadLroBuild}
+              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-purple-950/80 hover:bg-purple-900 border border-purple-500/40 text-purple-300 font-semibold transition-all"
+              title="Equip Authentic NASA LRO Science Suite"
+            >
+              <Radio className="w-3.5 h-3.5 text-purple-400" />
+              <span>REAL LRO PRESET (NASA PDS)</span>
+            </button>
             <button
               onClick={loadRecommendedBuild}
               className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900 border border-cyan-500/40 text-cyan-300 font-semibold transition-all"
@@ -164,10 +205,19 @@ export const SpacecraftBuilderScreen: React.FC = () => {
                         : 'bg-slate-950/60 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60'
                     }`}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-2">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                           <span className="font-semibold text-sm text-white">{comp.name}</span>
+                          {comp.isRealNasaInstrument ? (
+                            <span className="px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[9px] font-mono font-bold">
+                              REAL NASA PDS
+                            </span>
+                          ) : (
+                            <span className="px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 text-[9px] font-mono">
+                              SIMULATION
+                            </span>
+                          )}
                           {isEquipped && (
                             <span className="w-4 h-4 rounded bg-cyan-400 text-slate-950 flex items-center justify-center">
                               <Check className="w-3 h-3 stroke-[3]" />
@@ -175,6 +225,17 @@ export const SpacecraftBuilderScreen: React.FC = () => {
                           )}
                         </div>
                         <p className="text-[11px] text-slate-400 mt-1 leading-snug">{comp.description}</p>
+                        {comp.nasaRef && (
+                          <div className="text-[10px] font-mono text-cyan-400/80 mt-1 flex items-center justify-between">
+                            <span className="truncate">Source: {comp.nasaRef}</span>
+                            <button
+                              onClick={(e) => handleOpenProvenance(e, comp)}
+                              className="ml-2 underline hover:text-cyan-300 flex items-center space-x-0.5 shrink-0"
+                            >
+                              <span>PROVENANCE</span>
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
 

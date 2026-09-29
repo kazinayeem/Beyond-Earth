@@ -12,7 +12,7 @@ interface SettingsModalProps {
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
-  const { isMuted, toggleMute } = useGameStore();
+  const { isMuted, toggleMute, reducedMotion, toggleReducedMotion } = useGameStore();
 
   if (!isOpen) return null;
 
@@ -81,6 +81,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 }`}
               >
                 {!isMuted ? 'ENABLED' : 'MUTED'}
+              </button>
+            </div>
+
+            {/* Reduced Motion Toggle (Accessibility) */}
+            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-white">Reduced Motion Mode</div>
+                <div className="text-xs text-slate-400">Disables launch screen shake & particles</div>
+              </div>
+              <button
+                onClick={toggleReducedMotion}
+                className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border ${
+                  reducedMotion
+                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/50'
+                    : 'bg-slate-800 text-slate-400 border-slate-700'
+                }`}
+              >
+                {reducedMotion ? 'ENABLED' : 'DISABLED'}
               </button>
             </div>
 

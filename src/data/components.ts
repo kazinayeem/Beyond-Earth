@@ -107,6 +107,110 @@ export const SPACECRAFT_COMPONENTS: SpacecraftComponent[] = [
     iconName: 'Compass'
   },
 
+  // --- REAL NASA LRO INSTRUMENT SUITE (REAL MISSION MODE) ---
+  {
+    id: 'nasa-inst-lroc',
+    name: 'LROC: Lunar Reconnaissance Orbiter Camera',
+    category: 'instruments',
+    costM: 60,
+    massKg: 19,
+    powerW: 34,
+    scienceValue: 28,
+    riskModPct: 3,
+    description: 'Actual NASA LRO dual Narrow Angle Cameras (NAC) & Wide Angle Camera (WAC) mapping lunar craters down to 0.5-meter scale.',
+    nasaRef: 'NASA PDS Imaging Node / Arizona State University (Dr. Mark Robinson)',
+    pdsDatasetId: 'LRO-L-LROC-2-EDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 19.2,
+    realPowerW: 34.0,
+    iconName: 'Aperture'
+  },
+  {
+    id: 'nasa-inst-lola',
+    name: 'LOLA: Lunar Orbiter Laser Altimeter',
+    category: 'instruments',
+    costM: 45,
+    massKg: 11,
+    powerW: 31,
+    scienceValue: 22,
+    riskModPct: 2,
+    description: 'Actual NASA Goddard 5-beam 1064nm pulsed laser creating the highest resolution global planetary 3D topographic grid.',
+    nasaRef: 'NASA PDS Geosciences Node / GSFC (Dr. David E. Smith)',
+    pdsDatasetId: 'LRO-L-LOLA-3-RDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 11.2,
+    realPowerW: 30.8,
+    iconName: 'Scan'
+  },
+  {
+    id: 'nasa-inst-diviner',
+    name: 'Diviner: Lunar Radiometer Experiment',
+    category: 'instruments',
+    costM: 80,
+    massKg: 13,
+    powerW: 25,
+    scienceValue: 32,
+    riskModPct: 4,
+    description: 'Actual UCLA 9-channel infrared radiometer mapping extreme polar cold traps below 30 Kelvin (-243°C) harboring water ice.',
+    nasaRef: 'NASA PDS Geosciences Node / UCLA (Dr. David Paige)',
+    pdsDatasetId: 'LRO-L-DLRE-4-RDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 13.0,
+    realPowerW: 24.7,
+    iconName: 'Sparkles'
+  },
+  {
+    id: 'nasa-inst-minirf',
+    name: 'Mini-RF: Synthetic Aperture Radar (SAR)',
+    category: 'instruments',
+    costM: 110,
+    massKg: 16,
+    powerW: 90,
+    scienceValue: 38,
+    riskModPct: 6,
+    description: 'Actual JHU-APL dual-frequency X/S-band radar penetrating regolith to detect buried volume ice reflections.',
+    nasaRef: 'NASA PDS Geosciences Node / JHU-APL (Dr. Ben Bussey)',
+    pdsDatasetId: 'LRO-L-MRFLRO-4-CDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 15.6,
+    realPowerW: 90.0,
+    iconName: 'Radio'
+  },
+  {
+    id: 'nasa-inst-lamp',
+    name: 'LAMP: Lyman-Alpha Mapping Project',
+    category: 'instruments',
+    costM: 50,
+    massKg: 6,
+    powerW: 5,
+    scienceValue: 24,
+    riskModPct: 3,
+    description: 'Actual SwRI far-ultraviolet spectrograph utilizing interplanetary starlight glow to map frost in shadowed craters.',
+    nasaRef: 'NASA PDS Atmospheres Node / SwRI (Dr. Kurt Retherford)',
+    pdsDatasetId: 'LRO-L-LAMP-2-EDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 6.1,
+    realPowerW: 4.5,
+    iconName: 'Sun'
+  },
+  {
+    id: 'nasa-inst-crater',
+    name: 'CRaTER: Cosmic Ray Telescope',
+    category: 'instruments',
+    costM: 35,
+    massKg: 5,
+    powerW: 7,
+    scienceValue: 20,
+    riskModPct: -8,
+    description: 'Actual UNH solid-state telescope measuring ionizing cosmic ray dosage and space radiation hazard mitigation.',
+    nasaRef: 'NASA PDS PPI Node / UNH (Dr. Nathan Schwadron)',
+    pdsDatasetId: 'LRO-L-CRAT-2-EDR-V1.0',
+    isRealNasaInstrument: true,
+    realMassKg: 5.4,
+    realPowerW: 7.3,
+    iconName: 'Shield'
+  },
+
   // --- POWER ---
   {
     id: 'pwr-solar-basic',
@@ -338,5 +442,29 @@ export const SYNERGY_BONUSES: SynergyBonus[] = [
     bonusScience: 35,
     bonusRiskReduction: 4,
     description: 'Grand science instrumentation unlocks comprehensive planetary geoscience cataloging!'
+  },
+  {
+    id: 'syn-nasa-geodetic',
+    name: 'LRO Geodetic Topography Synergy',
+    requiredComponentIds: ['nasa-inst-lroc', 'nasa-inst-lola'],
+    bonusScience: 22,
+    bonusRiskReduction: 3,
+    description: 'Correlating sub-meter LROC photography with 5-beam LOLA laser altimetry establishes the definitive lunar geodetic reference grid.'
+  },
+  {
+    id: 'syn-nasa-volatiles',
+    name: 'Cryogenic Volatile Mapping Synergy',
+    requiredComponentIds: ['nasa-inst-diviner', 'nasa-inst-minirf'],
+    bonusScience: 28,
+    bonusRiskReduction: 4,
+    description: 'Cross-correlating Diviner sub-30K thermal cold traps with Mini-RF radar circular polarization ratio (CPR) detects buried volatile ice deposits!'
+  },
+  {
+    id: 'syn-nasa-lro-full',
+    name: 'Authentic NASA LRO Polar Science Suite',
+    requiredComponentIds: ['nasa-inst-lroc', 'nasa-inst-lola', 'nasa-inst-diviner', 'nasa-inst-minirf'],
+    bonusScience: 40,
+    bonusRiskReduction: 6,
+    description: 'Operating the authentic NASA Lunar Reconnaissance Orbiter payload suite delivers comprehensive polar scientific discoveries!'
   }
 ];
