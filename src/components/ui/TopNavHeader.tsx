@@ -80,7 +80,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
           {/* Player Credits */}
           <div className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
             <span className="text-slate-400">CR:</span>
-            <span className="font-bold">{credits.toLocaleString()}</span>
+            <span className="font-bold" suppressHydrationWarning>{credits.toLocaleString()}</span>
           </div>
 
           {/* Sound Toggle */}
