@@ -75,7 +75,7 @@ export default function GameMainPage() {
   };
 
   return (
-    <main className="relative min-h-screen flex flex-col justify-between overflow-x-hidden bg-[#020617] text-slate-100">
+    <main className="relative h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden bg-[#020617] text-slate-100">
       {/* Animated Deep Space Canvas */}
       <StarfieldCanvas density={120} speed={0.15} />
 
@@ -88,7 +88,13 @@ export default function GameMainPage() {
       />
 
       {/* Main Screen Content */}
-      <div className="flex-1 flex flex-col justify-center">
+      <div
+        className={`flex-1 flex flex-col min-h-0 ${
+          screen === 'launch' || screen === 'mission_control'
+            ? 'overflow-hidden'
+            : 'overflow-y-auto'
+        }`}
+      >
         {renderActiveScreen()}
       </div>
 

@@ -64,7 +64,7 @@ export const DataExplorerScreen: React.FC = () => {
             <div className="text-[10px] font-mono text-cyan-400 flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
               <span>NASA OPEN DATA EXPLORER & PDS ARCHIVE</span>
-              <span>//</span>
+              <span>{"//"}</span>
               <span>VERIFIED SCIENTIFIC DATASETS</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">

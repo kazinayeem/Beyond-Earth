@@ -34,7 +34,7 @@ export const MissionBriefingScreen: React.FC = () => {
             <div>
               <div className="text-xs font-mono text-cyan-400 flex items-center space-x-2">
                 <span>MISSION DIRECTIVE</span>
-                <span>//</span>
+                <span>{"//"}</span>
                 <span>{activeMission.code}</span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-white uppercase">

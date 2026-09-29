@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Volume2, VolumeX, RotateCcw, Sliders } from 'lucide-react';
 import { useGameStore } from '@/store/gameStore';
@@ -13,6 +13,7 @@ interface SettingsModalProps {
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose }) => {
   const { isMuted, toggleMute, reducedMotion, toggleReducedMotion } = useGameStore();
+  const [, setVolState] = useState(0);
 
   if (!isOpen) return null;
 
@@ -60,28 +61,87 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
 
           <div className="my-6 space-y-4">
             {/* Audio Toggle */}
-            <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950/70 border border-slate-800">
-              <div className="flex items-center space-x-3">
-                {isMuted ? (
-                  <VolumeX className="w-5 h-5 text-red-400" />
-                ) : (
-                  <Volume2 className="w-5 h-5 text-cyan-400" />
-                )}
-                <div>
-                  <div className="text-sm font-semibold text-white">Telemetry & SFX Audio</div>
-                  <div className="text-xs text-slate-400">Web Audio synthesis sound effects</div>
+            <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  {isMuted ? (
+                    <VolumeX className="w-5 h-5 text-red-400" />
+                  ) : (
+                    <Volume2 className="w-5 h-5 text-cyan-400" />
+                  )}
+                  <div>
+                    <div className="text-sm font-semibold text-white">Telemetry & SFX Audio</div>
+                    <div className="text-xs text-slate-400">Web Audio synthesis sound effects</div>
+                  </div>
                 </div>
+                <button
+                  onClick={toggleMute}
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border ${
+                    !isMuted
+                      ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
+                      : 'bg-slate-800 text-slate-400 border-slate-700'
+                  }`}
+                >
+                  {!isMuted ? 'ENABLED' : 'MUTED'}
+                </button>
               </div>
-              <button
-                onClick={toggleMute}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-bold transition-all border ${
-                  !isMuted
-                    ? 'bg-cyan-500/20 text-cyan-300 border-cyan-500/50'
-                    : 'bg-slate-800 text-slate-400 border-slate-700'
-                }`}
-              >
-                {!isMuted ? 'ENABLED' : 'MUTED'}
-              </button>
+
+              {/* Volume Sliders */}
+              {!isMuted && (
+                <div className="pt-2 border-t border-slate-800/80 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-400 text-[11px]">MASTER</span>
+                    <span className="text-cyan-400 font-bold">{Math.round(sounds.getVolumes().master * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={sounds.getVolumes().master}
+                    onChange={(e) => {
+                      sounds.setMasterVolume(parseFloat(e.target.value));
+                      // Force re-render of modal
+                      setVolState(s => s + 1);
+                    }}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-slate-400 text-[11px]">SFX (RUMBLE / CHIRP)</span>
+                    <span className="text-cyan-400 font-bold">{Math.round(sounds.getVolumes().sfx * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={sounds.getVolumes().sfx}
+                    onChange={(e) => {
+                      sounds.setSfxVolume(parseFloat(e.target.value));
+                      setVolState(s => s + 1);
+                    }}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-slate-400 text-[11px]">AMBIENT (ROOM / VACUUM)</span>
+                    <span className="text-cyan-400 font-bold">{Math.round(sounds.getVolumes().ambient * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={sounds.getVolumes().ambient}
+                    onChange={(e) => {
+                      sounds.setAmbientVolume(parseFloat(e.target.value));
+                      setVolState(s => s + 1);
+                    }}
+                    className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Reduced Motion Toggle (Accessibility) */}

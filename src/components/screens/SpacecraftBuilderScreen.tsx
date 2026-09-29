@@ -119,7 +119,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
             <div>
               <div className="text-[11px] font-mono text-cyan-400 flex items-center space-x-2">
                 <span>STAGE 02: PAYLOAD ENGINEERING</span>
-                <span>//</span>
+                <span>{"//"}</span>
                 <span>{activeMission.name}</span>
               </div>
               <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">

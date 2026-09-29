@@ -240,7 +240,7 @@ const defaultComponentIds = [
 export const useGameStore = create<GameState>((set, get) => {
   // Read persisted data if in browser
   let initialCredits = 1000;
-  let initialUnlocked = ['mission-01', 'mission-02', 'mission-03', 'mission-04'];
+  const initialUnlocked = ['mission-01', 'mission-02', 'mission-03', 'mission-04'];
   let initialAch = INITIAL_ACHIEVEMENTS;
   let initialLeaderboard: LeaderboardEntry[] = [
     {

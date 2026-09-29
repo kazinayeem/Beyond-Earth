@@ -88,7 +88,7 @@ export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => 
           <div>
             <div className="text-xs font-mono text-cyan-400 flex items-center space-x-2">
               <span>NASA FLIGHT DIRECTOR DEBRIEFING REPORT</span>
-              <span>//</span>
+              <span>{"//"}</span>
               <span>POST-FLIGHT EVALUATION</span>
             </div>
             <h2 className="text-2xl sm:text-4xl font-black tracking-tight text-white uppercase mt-1">

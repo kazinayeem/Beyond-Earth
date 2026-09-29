@@ -51,7 +51,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
                   SIM
                 </span>
               </div>
-              <div className="text-[10px] font-mono text-cyan-400/80">BEYOND EARTH // NASA SPEC</div>
+              <div className="text-[10px] font-mono text-cyan-400/80">BEYOND EARTH // OPEN SPACE DATA</div>
             </div>
           </button>
 
@@ -67,9 +67,11 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
           )}
         </div>
 
-        {/* Center: Live UTC Mission Clock */}
+        {/* Center: Live UTC System / Mission Clock */}
         <div className="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-mono text-cyan-300">
-          <span className="text-slate-500">MET:</span>
+          <span className="text-slate-500">
+            {screen === 'title' || screen === 'missions' ? 'SYSTEM TIME:' : 'MET:'}
+          </span>
           <span>{utcTime}</span>
         </div>
 

@@ -49,7 +49,7 @@ export const LauncherTrajectoryScreen: React.FC = () => {
           <div>
             <div className="text-[11px] font-mono text-cyan-400 flex items-center space-x-2">
               <span>STAGE 03: LAUNCH VEHICLE & ORBITAL MECHANICS</span>
-              <span>//</span>
+              <span>{"//"}</span>
               <span>{activeMission.name}</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">

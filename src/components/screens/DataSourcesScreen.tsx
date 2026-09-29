@@ -25,7 +25,7 @@ export const DataSourcesScreen: React.FC = () => {
             <div className="text-[10px] font-mono text-cyan-400 flex items-center space-x-2">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               <span>OFFICIAL SCIENTIFIC TRANSPARENCY REGISTRY</span>
-              <span>//</span>
+              <span>{"//"}</span>
               <span>NASA OPEN DATA &amp; PDS ARCHIVES</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black tracking-tight text-white uppercase">

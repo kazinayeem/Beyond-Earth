@@ -80,5 +80,35 @@ export const NASA_PROVENANCE_CATALOG: ProvenanceRecord[] = [
     dataType: 'telemetry',
     officialSourceUrl: 'https://eyes.nasa.gov/dsn/dsn.html',
     notes: 'Informs 8.4 GHz X/Ka-band signal carrier locks, ground receiver dishes, and carrier drop recovery procedures.'
+  },
+  {
+    title: 'NASA Blue Marble Global Terrestrial Imagery',
+    datasetName: 'MODIS/Terra Blue Marble Next Generation Global Mosaic',
+    mission: 'NASA Earth Observing System (EOS) / Terra & Aqua',
+    archive: 'NASA Earth Observatory / Visible Earth (GSFC)',
+    lastRetrieved: '2026-09-29',
+    dataType: 'image',
+    officialSourceUrl: 'https://visibleearth.nasa.gov/collection/1484/blue-marble',
+    notes: 'Used to render authentic Earth ocean gradients, continental vegetation patterns, and Rayleigh scattering atmospheric limb.'
+  },
+  {
+    title: 'NASA LRO WAC Global Lunar Cartographic Mosaic',
+    datasetName: 'LRO-L-LROC-5-RDR-V1.0 (Wide Angle Camera Global Mosaic)',
+    mission: 'Lunar Reconnaissance Orbiter (LRO)',
+    archive: 'NASA PDS Cartography and Imaging Sciences Node (USGS/ASU)',
+    lastRetrieved: '2026-09-29',
+    dataType: 'image',
+    officialSourceUrl: 'https://astrogeology.usgs.gov/search/map/Moon/LRO/LROC/WAC_Global',
+    notes: 'Provides high-accuracy lunar maria (Sea of Tranquility), crater rays (Tycho/Copernicus), and regolith albedo mapping.'
+  },
+  {
+    title: 'NASA MGS MOLA & MRO MARCI Mars Global Topography & Color',
+    datasetName: 'MGS-M-MOLA-5-MEGDR-L3-V1.0 & MRO MARCI Global Color',
+    mission: 'Mars Global Surveyor (MGS) & Mars Reconnaissance Orbiter (MRO)',
+    archive: 'NASA PDS Geosciences Node (Washington University in St. Louis)',
+    lastRetrieved: '2026-09-29',
+    dataType: 'image',
+    officialSourceUrl: 'https://pds-geosciences.wustl.edu/missions/mgs/mola.htm',
+    notes: 'Informs realistic Martian terrain features including Syrtis Major volcanic shields, Valles Marineris canyon rifts, and polar ice caps.'
   }
 ];
