@@ -61,7 +61,7 @@ assert(planetAdapter.validate(REAL_PLANETARY_DATA.moon), 'PlanetaryDataAdapter v
 const instAdapter = new InstrumentDataAdapter();
 assert(instAdapter.validate(REAL_LRO_INSTRUMENTS), 'InstrumentDataAdapter validate() passes on LRO catalog');
 const instMeta = instAdapter.getSourceMetadata();
-assert(instMeta.archiveNode?.includes('PDS'), 'InstrumentDataAdapter specifies PDS archive node');
+assert(Boolean(instMeta.archiveNode?.includes('PDS')), 'InstrumentDataAdapter specifies PDS archive node');
 
 const missionAdapter = new MissionDataAdapter();
 assert(missionAdapter.validate(REAL_NASA_MISSIONS), 'MissionDataAdapter validate() passes on NASA mission profiles');

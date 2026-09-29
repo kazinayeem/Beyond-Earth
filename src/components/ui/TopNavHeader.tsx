@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useGameStore } from '@/store/gameStore';
-import { Volume2, VolumeX, Trophy, Award, HelpCircle, Sliders, Home, Compass } from 'lucide-react';
+import { Volume2, VolumeX, Trophy, Award, HelpCircle, Sliders, Home, Compass, Database, ShieldCheck } from 'lucide-react';
 import { sounds } from '@/lib/sound';
 
 interface TopNavProps {
