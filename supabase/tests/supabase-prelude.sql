@@ -17,7 +17,10 @@ create table auth.users (
   email text unique,
   raw_user_meta_data jsonb default '{}'::jsonb,
   raw_app_meta_data jsonb default '{}'::jsonb,
-  created_at timestamptz default now()
+  created_at timestamptz default now(),
+  -- columns the demo seed writes (subset of the hosted auth.users)
+  instance_id uuid, aud text, role text, encrypted_password text, email_confirmed_at timestamptz,
+  updated_at timestamptz, confirmation_token text, recovery_token text, email_change_token_new text, email_change text
 );
 
 create or replace function auth.uid() returns uuid language sql stable as $$

@@ -23,6 +23,7 @@ import {
   Satellite 
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
+import { PlayedByBadge } from '@/components/ui/PlayedByBadge';
 
 interface TitleScreenProps {
   onOpenTutorial: () => void;
@@ -153,6 +154,9 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
               <span>HOW TO PLAY</span>
             </button>
           </div>
+
+          {/* Social proof */}
+          <PlayedByBadge />
 
           {/* Live Mission Network Telemetry Strip */}
           <div className="pt-2">

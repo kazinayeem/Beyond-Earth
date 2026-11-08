@@ -13,7 +13,10 @@
     "db:push": "npx -y supabase@2 db push",
     "seed:players": "tsx scripts/supabase/seedPlayers.ts",
     "verify:supabase": "tsx scripts/supabase/verifyLive.ts",
-    "db:migrate": "tsx scripts/supabase/migrate.ts"
+    "db:migrate": "tsx scripts/supabase/migrate.ts",
+    "seed:demo": "tsx scripts/supabase/seedDemo.ts",
+    "db:seed-demo": "tsx scripts/supabase/migrate.ts --include-seed",
+    "test:seed": "tsx scripts/testDemoSeed.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

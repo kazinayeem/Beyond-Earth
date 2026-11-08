@@ -21,9 +21,11 @@ if (!dbUrl) {
 }
 
 const dryRun = process.argv.includes('--dry-run');
-console.log(`Applying migrations to project ${ref}${dryRun ? ' (dry run)' : ''}…`);
+console.log(`Applying migrations${process.argv.includes('--include-seed') ? ' and seed data' : ''} to project ${ref}${dryRun ? ' (dry run)' : ''}…`);
 const args = ['-y', 'supabase@2', 'db', 'push', '--db-url', dbUrl, '--yes'];
 if (dryRun) args.push('--dry-run');
+const withSeed = process.argv.includes('--include-seed');
+if (withSeed) args.push('--include-seed'); // runs [db.seed].sql_paths from supabase/config.toml once (hash-tracked)
 const res = spawnSync('npx', args, { cwd: ROOT, encoding: 'utf8' });
 // Never echo the connection string, even if the CLI includes it in an error
 const scrub = (s: string) => s.split(dbUrl).join('postgresql://postgres:***@…').replace(/postgres(?:ql)?:\/\/[^@\s]+@/g, 'postgresql://***@');

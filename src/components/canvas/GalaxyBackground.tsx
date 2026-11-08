@@ -16,7 +16,7 @@
  * resources are disposed on unmount. Falls back to a CSS gradient without WebGL.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 
 interface Props {
@@ -165,11 +165,10 @@ const STAR_FRAG = /* glsl */ `
 
 export const GalaxyBackground: React.FC<Props> = ({ reducedMotion = false }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
-  const [supported] = useState(() => (typeof window === 'undefined' ? true : hasWebGL()));
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host || !supported) return;
+    if (!host || !hasWebGL()) return; // the CSS gradient below stays visible
 
     const tier = qualityTier();
     const counts = {
@@ -446,21 +445,19 @@ export const GalaxyBackground: React.FC<Props> = ({ reducedMotion = false }) => 
       renderer.forceContextLoss();
       renderer.domElement.remove();
     };
-  }, [supported, reducedMotion]);
+  }, [reducedMotion]);
 
   return (
     <div className="fixed inset-0 z-0 pointer-events-none" aria-hidden="true">
-      {supported ? (
-        <div ref={hostRef} className="absolute inset-0" />
-      ) : (
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 60% 45% at 68% 35%, rgba(120,110,255,0.28), transparent 70%), radial-gradient(ellipse 40% 30% at 70% 38%, rgba(255,236,210,0.18), transparent 60%), radial-gradient(ellipse 80% 60% at 20% 90%, rgba(30,90,160,0.25), transparent 70%), #02040b',
-          }}
-        />
-      )}
+      {/* CSS fallback, rendered on server and client alike; the WebGL canvas covers it when available */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background:
+            'radial-gradient(ellipse 60% 45% at 68% 35%, rgba(120,110,255,0.28), transparent 70%), radial-gradient(ellipse 40% 30% at 70% 38%, rgba(255,236,210,0.18), transparent 60%), radial-gradient(ellipse 80% 60% at 20% 90%, rgba(30,90,160,0.25), transparent 70%), #02040b',
+        }}
+      />
+      <div ref={hostRef} className="absolute inset-0" />
       {/* Layer 5: readability scrim — darkens behind the hero copy on the left and the page bottom */}
       <div
         className="absolute inset-0"

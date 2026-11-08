@@ -39,6 +39,8 @@ SEED_PRIMARY_PASSWORD=…       # password for the primary account
 - **How it runs:** all accounts are email-confirmed. Profiles and player IDs come from the same database trigger a real sign-up uses, and squad membership goes through the real invite/accept RPCs. Everyone starts with 1,000 credits, 0 XP and 0 science.
 - **Running it again** updates rather than duplicates: no extra users, profiles or squads, and earned progress is kept.
 
+**Demo data:** `npm run seed:demo` adds 2,000 demo pilots (`--count=N` to change the number). They come with mission history spread over the last 90 days, squads of 2–3, statistics and achievements, all computed with the same formula as `complete_mission()`. Each one is a real Auth user at `demo-pilot-NNNN@example.com`, tagged `app_metadata.demo = true`, with the bio "Demo pilot (seed data)" and a discarded random password, so nobody can sign in as them. They appear on the public leaderboards. `npm run seed:demo -- --clean` removes them all.
+
 `npm run verify:supabase` then runs live checks against the project: sign-in for all five accounts, profiles and unique player IDs, RLS (no editing others' profiles, no writing credits, no forged results), the squad limit (it temporarily opens a seat, lets two outsiders try to accept, and confirms the 4th is refused, then restores the squad), and leaderboards. Add `APP_URL=http://localhost:3000` to also check that the app pages load without a database warning.
 
 ## 2. Configure Auth (Dashboard → Authentication)
