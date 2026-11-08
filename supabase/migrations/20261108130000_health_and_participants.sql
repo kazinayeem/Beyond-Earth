@@ -81,3 +81,59 @@ create policy "squad runs on shared missions" on public.mission_runs for select 
 drop trigger if exists player_statistics_touch on public.player_statistics;
 create trigger player_statistics_touch before update on public.player_statistics
   for each row execute function private.touch_updated_at();
+
+-- ── Profile recovery ───────────────────────────────────────────────────────
+-- The signup trigger creates the profile in the same transaction as the auth
+-- user, so normally both exist or neither does. Accounts created before this
+-- schema existed (or by tools that bypass the trigger) can still end up
+-- without a profile. This lets a signed-in player repair their own account.
+-- Idempotent and safe under concurrent calls; returns the player ID.
+create or replace function public.ensure_my_profile()
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  uid   uuid := private.require_uid();
+  meta  jsonb;
+  uname text;
+  dname text;
+  code  text;
+  tries integer := 0;
+begin
+  select p.player_code into code from public.profiles p where p.id = uid;
+  if code is null then
+    select coalesce(u.raw_user_meta_data, '{}'::jsonb) into meta from auth.users u where u.id = uid;
+    if not found then raise exception 'NOT_AUTHENTICATED' using errcode = '28000'; end if;
+    uname := lower(coalesce(meta ->> 'username', ''));
+    dname := btrim(coalesce(meta ->> 'display_name', meta ->> 'full_name', meta ->> 'name', ''));
+    if uname !~ '^[a-z0-9_]{3,20}$' or exists (select 1 from public.profiles p where lower(p.username) = uname) then
+      uname := 'pilot_' || lower(private.random_code(6));
+    end if;
+    if char_length(dname) < 2 then dname := uname; end if;
+    dname := left(dname, 32);
+    loop
+      tries := tries + 1;
+      code := 'MC-' || private.random_code(6);
+      begin
+        insert into public.profiles (id, player_code, username, display_name) values (uid, code, uname, dname);
+        exit;
+      exception when unique_violation then
+        -- a concurrent call created it first: use that one
+        select p.player_code into code from public.profiles p where p.id = uid;
+        exit when code is not null;
+        if tries >= 12 then raise; end if;
+        if exists (select 1 from public.profiles p where lower(p.username) = uname) then
+          uname := 'pilot_' || lower(private.random_code(6));
+        end if;
+      end;
+    end loop;
+  end if;
+  insert into public.player_statistics (player_id) values (uid) on conflict (player_id) do nothing;
+  return code;
+end;
+$$;
+
+revoke all on function public.ensure_my_profile() from public, anon;
+grant execute on function public.ensure_my_profile() to authenticated;

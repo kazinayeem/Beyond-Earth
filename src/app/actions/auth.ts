@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { safeNext } from '@/lib/network/safeNext';
+import { rateLimited } from '@/lib/network/rateLimit';
 
 export interface AuthFormState {
   error?: string;
@@ -44,15 +45,27 @@ function fieldErrors(err: z.ZodError) {
   return out;
 }
 
+/** Why sign-up can't proceed, from the username check's error. */
+function registrationBlocked(err: { code?: string; message?: string }): string {
+  if (err.code === 'PGRST202' || err.code === 'PGRST205') {
+    return 'Registration is closed until the multiplayer database is set up (its tables are missing). Check /status for details.';
+  }
+  if (err.code === '42501') return 'Registration is closed: the database refused the username check (permission denied). Check /status for details.';
+  if (!err.code) return "Can't reach the player database right now. Check your connection and try again.";
+  return 'Registration hit a database error. Try again in a moment, or check /status.';
+}
+
 export async function registerAction(_: AuthFormState, form: FormData): Promise<AuthFormState> {
   if (!isSupabaseConfigured) return { error: 'Supabase is not configured.' };
   const parsed = registerSchema.safeParse(Object.fromEntries(form));
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
   const v = parsed.data;
+  if (await rateLimited('register', 5, 10 * 60_000)) return { error: 'Too many sign-up attempts from this network. Try again in a few minutes.' };
   const supabase = await createClient();
 
+  // Without the schema, sign-up would create a login with no player profile, so stop here and say why.
   const { data: available, error: availErr } = await supabase.rpc('username_available', { candidate: v.username });
-  if (availErr) return { error: 'Registration is unavailable until the multiplayer database is set up. Check /status for details.' };
+  if (availErr) return { error: registrationBlocked(availErr) };
   if (!available) return { fieldErrors: { username: 'That username is taken' } };
 
   const origin = await siteOrigin();
@@ -67,6 +80,9 @@ export async function registerAction(_: AuthFormState, form: FormData): Promise<
   });
   if (error) {
     if (/already registered|exists/i.test(error.message)) return { fieldErrors: { email: 'An account with this email already exists' } };
+    // The signup trigger runs in the same transaction, so a failure here leaves no half-created account.
+    if (/database error saving new user/i.test(error.message)) return { error: 'Your account could not be created because the player profile setup failed. Nothing was saved, so you can try again.' };
+    if (/rate limit|too many/i.test(error.message)) return { error: 'Too many sign-up attempts right now. Try again in a few minutes.' };
     if (/password/i.test(error.message)) return { fieldErrors: { password: error.message } };
     return { error: error.message };
   }
@@ -86,6 +102,8 @@ export async function loginAction(_: AuthFormState, form: FormData): Promise<Aut
   if (!z.email().safeParse(email).success) return { fieldErrors: { email: 'Enter a valid email' } };
   if (!password) return { fieldErrors: { password: 'Enter your password' } };
 
+  if (await rateLimited('login', 20, 10 * 60_000)) return { error: 'Too many sign-in attempts. Wait a few minutes and try again.' };
+
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
@@ -93,6 +111,7 @@ export async function loginAction(_: AuthFormState, form: FormData): Promise<Aut
     if (/invalid login/i.test(error.message)) return { error: 'Email or password is incorrect.' };
     return { error: error.message };
   }
+  await supabase.rpc('ensure_my_profile'); // repairs accounts created before the schema existed; no-op otherwise
   redirect(next);
 }
 
@@ -111,6 +130,7 @@ export async function googleAction(form: FormData) {
 export async function forgotPasswordAction(_: AuthFormState, form: FormData): Promise<AuthFormState> {
   const email = String(form.get('email') ?? '').trim();
   if (!z.email().safeParse(email).success) return { fieldErrors: { email: 'Enter a valid email' } };
+  if (await rateLimited('forgot', 5, 10 * 60_000)) return { error: 'Too many reset requests. Try again in a few minutes.' };
   const supabase = await createClient();
   const origin = await siteOrigin();
   await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${origin}/auth/callback?next=/reset-password` });

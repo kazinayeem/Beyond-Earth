@@ -12,7 +12,8 @@
     "db:link": "npx -y supabase@2 link --project-ref czuofwvddtnohwnfienx",
     "db:push": "npx -y supabase@2 db push",
     "seed:players": "tsx scripts/supabase/seedPlayers.ts",
-    "verify:supabase": "tsx scripts/supabase/verifyLive.ts"
+    "verify:supabase": "tsx scripts/supabase/verifyLive.ts",
+    "db:migrate": "tsx scripts/supabase/migrate.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

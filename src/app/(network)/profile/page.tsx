@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { getPlayerDossier, getVerifiedUserIdSafe } from '@/lib/network/serverAuth';
+import { ensureMyProfile } from '@/lib/network/queries';
 import { PlayerDossier } from '@/components/network/PlayerDossier';
 import { ProfileEditor } from '@/components/network/ProfileEditor';
 import { Notice } from '@/components/network/ui';
@@ -11,7 +12,8 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const uid = await getVerifiedUserIdSafe();
   if (!uid) redirect('/login?next=/profile');
   const sp = await searchParams;
-  const d = await getPlayerDossier({ id: uid });
+  let d = await getPlayerDossier({ id: uid });
+  if (!d && (await ensureMyProfile())) d = await getPlayerDossier({ id: uid }); // repair a missing profile once
   if (!d) return <DbNotReady />;
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10 space-y-4">

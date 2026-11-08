@@ -117,6 +117,13 @@ export async function getPlayerDossier(by: { id?: string; code?: string }) {
   };
 }
 
+/** Creates the caller's profile if their account has none (idempotent). Returns the player ID or null. */
+export async function ensureMyProfile(): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('ensure_my_profile');
+  return error ? null : (data as string);
+}
+
 export async function getSquadDashboard() {
   const supabase = await createClient();
   const uid = await currentUserId(supabase);

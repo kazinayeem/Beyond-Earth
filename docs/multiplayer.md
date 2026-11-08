@@ -9,9 +9,11 @@ The schema lives in `supabase/migrations/`, applied in filename order:
 | File | What it adds |
 |---|---|
 | `20261108120000_multiplayer_core.sql` | All tables, RLS policies, triggers and RPCs |
-| `20261108130000_health_and_participants.sql` | `multiplayer_health()`, the `mission_participants` view, squad run visibility, stats timestamp trigger |
+| `20261108130000_health_and_participants.sql` | `multiplayer_health()`, `ensure_my_profile()` (repairs accounts that have no profile), the `mission_participants` view, squad run visibility, stats timestamp trigger |
 
-**With the CLI (recommended):**
+**With the database password (simplest):** add `SUPABASE_DB_PASSWORD=…` to `.env.local` (Dashboard → Project Settings → Database; reset it there if you don't know it), then run `npm run db:migrate`. This runs `supabase db push` against `db.<project-ref>.supabase.co:5432`. The password is read from the env file and scrubbed from the output.
+
+**With a CLI login:**
 
 ```bash
 npx supabase@2 login        # opens a browser once

@@ -243,6 +243,20 @@ async function main() {
   await as(ana);
   ok((await q(`select * from public.player_statistics where player_id = $1`, [ana])).length === 1, 'private player still sees own stats');
 
+  // ── Profile recovery ──
+  console.log('[profile recovery]');
+  const orphan = await signUp('orphan@example.com', { username: 'orphan_pilot', display_name: 'Orphan Pilot' });
+  await asAdmin();
+  await q(`delete from public.profiles where id = $1`, [orphan]);  // simulate an account with no profile
+  await as(orphan);
+  const code1 = (await q<{ c: string }>(`select public.ensure_my_profile() as c`))[0].c;
+  ok(/^MC-[2-9A-HJ-NP-Z]{6}$/.test(code1), 'ensure_my_profile recreates a missing profile with a new player ID');
+  const rec = (await q<{ username: string; credits: number }>(`select p.username, s.credits from public.profiles p join public.player_statistics s on s.player_id = p.id where p.id = $1`, [orphan]))[0];
+  ok(rec?.username === 'orphan_pilot' && rec.credits === 1000, 'recovered profile keeps the chosen username and starts with 1,000 credits');
+  ok((await q<{ c: string }>(`select public.ensure_my_profile() as c`))[0].c === code1, 'ensure_my_profile is idempotent');
+  await as(null);
+  ok(await fails(`select public.ensure_my_profile()`, [], /permission denied/), 'visitors cannot call ensure_my_profile');
+
   // ── Health check & re-run guard ──
   console.log('[health]');
   await as(null);
