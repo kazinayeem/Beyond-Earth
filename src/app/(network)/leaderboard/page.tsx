@@ -63,7 +63,7 @@ export default async function LeaderboardPage({ searchParams }: { searchParams: 
       )}
 
       {board === 'players'
-        ? <PlayerBoard rows={res.rows as LeaderRow[]} unit={cat.unit} />
+        ? <PlayerBoard rows={res.rows as LeaderRow[]} unit={cat.unit} cat={cat.id} />
         : <SquadBoard rows={res.rows as GroupLeaderRow[]} />}
       <p className="mt-4 text-[11px] text-slate-500">Rankings use server-verified results only. Weekly and monthly boards are rolling windows. Pilots with private statistics are not listed.</p>
     </div>
@@ -86,7 +86,7 @@ function Podium<T>({ top, render }: { top: T[]; render: (row: T, i: number) => R
   );
 }
 
-function PlayerBoard({ rows, unit }: { rows: LeaderRow[]; unit: string }) {
+function PlayerBoard({ rows, unit, cat }: { rows: LeaderRow[]; unit: string; cat: string }) {
   if (!rows.length) return <div className="rounded-2xl glass-panel"><EmptyState icon={<Trophy className="w-6 h-6" />} title="No ranked pilots yet">Complete a mission to appear here.</EmptyState></div>;
   const top = rows.filter(r => r.rank <= 3);
   const rest = rows.filter(r => r.rank > 3);
@@ -104,15 +104,15 @@ function PlayerBoard({ rows, unit }: { rows: LeaderRow[]; unit: string }) {
       {rest.length > 0 && (
         <div className="rounded-2xl glass-panel overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="text-left hud-label"><th className="px-4 py-3 font-normal w-14">Rank</th><th className="font-normal">Pilot</th><th className="font-normal text-right hidden sm:table-cell">Science</th><th className="font-normal text-right hidden sm:table-cell">Missions</th><th className="font-normal text-right hidden md:table-cell">XP</th><th className="font-normal text-right px-4">{unit}</th></tr></thead>
+            <thead><tr className="text-left hud-label"><th className="px-4 py-3 font-normal w-14">Rank</th><th className="font-normal">Pilot</th>{cat !== 'science' && <th className="font-normal text-right hidden sm:table-cell">Science</th>}{cat !== 'missions' && <th className="font-normal text-right hidden sm:table-cell">Missions</th>}{cat !== 'xp' && <th className="font-normal text-right hidden md:table-cell">XP</th>}<th className="font-normal text-right px-4">{unit}</th></tr></thead>
             <tbody>
               {rest.map(r => (
                 <tr key={r.player_id} className={`border-t border-white/[0.05] ${r.is_me ? 'bg-cyan-400/10' : ''}`} aria-current={r.is_me ? 'true' : undefined}>
                   <td className="px-4 py-2.5 font-mono text-slate-400">{r.rank}</td>
                   <td><Link href={`/players/${r.player_code}`} className="flex items-center gap-2.5 py-1.5"><PlayerAvatar avatar={r.avatar} size={30} /><span className="min-w-0"><span className="block text-white truncate">{r.display_name}{r.is_me && <span className="ml-1.5 text-[10px] text-cyan-300">YOU</span>}</span><span className="block text-[11px] font-mono text-slate-500">{r.player_code} · {r.player_rank}</span></span></Link></td>
-                  <td className="text-right font-mono tabular-nums hidden sm:table-cell">{Number(r.science).toLocaleString()}</td>
-                  <td className="text-right font-mono tabular-nums hidden sm:table-cell">{r.missions}</td>
-                  <td className="text-right font-mono tabular-nums hidden md:table-cell">{Number(r.xp).toLocaleString()}</td>
+                  {cat !== 'science' && <td className="text-right font-mono tabular-nums hidden sm:table-cell">{Number(r.science).toLocaleString()}</td>}
+                  {cat !== 'missions' && <td className="text-right font-mono tabular-nums hidden sm:table-cell">{r.missions}</td>}
+                  {cat !== 'xp' && <td className="text-right font-mono tabular-nums hidden md:table-cell">{Number(r.xp).toLocaleString()}</td>}
                   <td className="text-right font-mono tabular-nums px-4 text-white">{Number(r.value).toLocaleString()}</td>
                 </tr>
               ))}
