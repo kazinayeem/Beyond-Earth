@@ -35,7 +35,10 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
   onOpenLeaderboard,
   onOpenSettings
 }) => {
-  const { setScreen, setActiveMission } = useGameStore();
+  const setScreen = useGameStore(s => s.setScreen);
+  const setActiveMission = useGameStore(s => s.setActiveMission);
+  const achievements = useGameStore(s => s.achievements);
+  const unlockedCount = achievements.filter(a => a.unlocked).length;
   const [isStartHovered, setIsStartHovered] = useState(false);
   const [isDataHovered, setIsDataHovered] = useState(false);
 
@@ -64,7 +67,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       <section className="relative flex flex-col lg:flex-row items-center justify-between gap-10 lg:gap-14 pt-4 pb-8 border-b border-slate-800/80">
         
         {/* Left: Mission Command Header & CTAs */}
-        <div className="w-full lg:w-7/12 text-left space-y-6">
+        <div className="w-full lg:w-7/12 text-left space-y-6 hero-stagger">
           
           {/* Top Status & Integrity Badges */}
           <div className="flex flex-wrap items-center gap-2.5">
@@ -83,11 +86,11 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
           {/* Main Title Typography */}
           <div className="space-y-1">
-            <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white uppercase drop-shadow-[0_0_35px_rgba(255,255,255,0.15)] font-mono leading-none">
-              MISSION CONTROL
+            <h1 className="font-display text-5xl sm:text-7xl lg:text-[5.5rem] font-bold tracking-[-0.01em] text-white uppercase leading-[0.92] hero-title">
+              Mission Control
             </h1>
-            <div className="text-2xl sm:text-4xl lg:text-5xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 font-mono">
-              BEYOND EARTH
+            <div className="font-display text-2xl sm:text-4xl lg:text-5xl font-light tracking-[0.32em] uppercase text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-200 to-violet-300">
+              Beyond Earth
             </div>
           </div>
 
@@ -102,7 +105,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Primary Action Buttons */}
-          <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 max-w-lg">
+          <div className="pt-2 flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-3 max-w-2xl whitespace-nowrap">
             {/* Primary CTA: START MISSION */}
             <button
               onClick={() => {
@@ -114,7 +117,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                 sounds.playHover();
               }}
               onMouseLeave={() => setIsStartHovered(false)}
-              className="flex-1 flex items-center justify-center space-x-2.5 px-7 py-3.5 rounded-xl bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-sm tracking-wider font-mono shadow-[0_0_30px_rgba(6,182,212,0.45)] hover:shadow-[0_0_40px_rgba(6,182,212,0.65)] hover:scale-[1.02] active:scale-[0.98] transition-all"
+              className="cta-primary flex-1 flex items-center justify-center space-x-2.5 px-7 py-3.5 rounded-xl text-slate-950 font-semibold text-sm tracking-[0.12em] font-mono"
             >
               <Rocket className="w-4 h-4 text-slate-950" />
               <span>{isStartHovered ? 'INITIALIZE MISSION →' : 'START MISSION'}</span>
@@ -131,7 +134,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                 sounds.playHover();
               }}
               onMouseLeave={() => setIsDataHovered(false)}
-              className="px-6 py-3.5 rounded-xl border border-cyan-500/40 bg-cyan-950/40 hover:bg-cyan-900/60 text-cyan-300 font-mono text-sm tracking-wider transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)] flex items-center justify-center space-x-2 hover:border-cyan-400 hover:scale-[1.02] active:scale-[0.98]"
+              className="cta-secondary px-6 py-3.5 rounded-xl text-cyan-100 font-mono text-sm tracking-wider flex items-center justify-center space-x-2"
             >
               <Database className="w-4 h-4 text-cyan-400" />
               <span>{isDataHovered ? 'ACCESS DATA ARCHIVE →' : 'EXPLORE NASA DATA'}</span>
@@ -144,7 +147,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                 onOpenTutorial();
               }}
               onMouseEnter={() => sounds.playHover()}
-              className="px-5 py-3.5 rounded-xl border border-slate-700 bg-slate-900/80 hover:bg-slate-800 text-slate-300 hover:text-white font-mono text-sm tracking-wider transition-all flex items-center justify-center space-x-1.5"
+              className="cta-ghost px-5 py-3.5 rounded-xl text-slate-300 hover:text-white font-mono text-sm tracking-wider flex items-center justify-center space-x-1.5"
             >
               <HelpCircle className="w-4 h-4 text-slate-400" />
               <span>HOW TO PLAY</span>
@@ -153,7 +156,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
           {/* Live Mission Network Telemetry Strip */}
           <div className="pt-2">
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
+            <div className="p-3.5 rounded-xl glass-panel flex flex-wrap items-center justify-between gap-4 font-mono text-xs">
               <div className="flex items-center space-x-2 text-cyan-400">
                 <Radio className="w-4 h-4 animate-pulse text-cyan-400" />
                 <span className="font-bold tracking-wider">LIVE MISSION NETWORK</span>
@@ -168,8 +171,8 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
                   <span className="text-cyan-300 font-bold">0{MISSIONS.length}</span>
                 </div>
                 <div className="hidden sm:inline">
-                  <span className="text-slate-500 mr-1.5">SYSTEM READY:</span>
-                  <span className="text-emerald-400 font-bold">98.4%</span>
+                  <span className="text-slate-500 mr-1.5">ACHIEVEMENTS:</span>
+                  <span className="text-emerald-400 font-bold" suppressHydrationWarning>{unlockedCount}/{achievements.length}</span>
                 </div>
               </div>
             </div>
@@ -226,8 +229,8 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
         {/* Right: Realistic Mission-Control Orbital Visual */}
         <div className="w-full lg:w-5/12 flex flex-col items-center justify-center">
-          <div className="relative p-2 rounded-2xl bg-slate-950/60 border border-slate-800/80 shadow-[0_0_50px_rgba(6,182,212,0.15)]">
-            <HeroOrbitalVisual size={400} />
+          <div className="relative hero-earth">
+            <HeroOrbitalVisual size={440} />
             <div className="mt-2 text-center font-mono text-[11px] text-slate-400">
               ORBITAL TRACKING // DEEP SPACE NETWORK LOCK (8.4 GHz)
             </div>
@@ -263,7 +266,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         </div>
 
         {/* Featured Mission Spotlight: Lunar Explorer */}
-        <div className="p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-cyan-500/30 shadow-[0_0_30px_rgba(6,182,212,0.1)] relative overflow-hidden">
+        <div className="p-6 rounded-2xl glass-panel shadow-[0_0_30px_rgba(6,182,212,0.1)] relative overflow-hidden">
           <div className="absolute top-0 right-0 px-4 py-1.5 bg-cyan-500/20 text-cyan-300 font-mono text-[11px] font-bold border-b border-l border-cyan-500/30 rounded-bl-xl flex items-center space-x-1.5">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
             <span>NEXT AVAILABLE MISSION</span>
@@ -271,7 +274,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
             {/* Target Visual Badge */}
-            <div className="lg:col-span-3 flex flex-col items-center justify-center p-4 rounded-xl bg-slate-950/80 border border-slate-800">
+            <div className="lg:col-span-3 flex flex-col items-center justify-center p-4 rounded-xl glass-panel">
               {/* Photorealistic Moon Sphere Representation */}
               <div className="w-24 h-24 rounded-full bg-gradient-to-br from-slate-200 via-slate-400 to-slate-800 shadow-[0_0_30px_rgba(255,255,255,0.3)] relative overflow-hidden border border-slate-300/40">
                 <div className="absolute top-3 left-4 w-6 h-5 rounded-full bg-slate-500/60" />
@@ -347,7 +350,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         {/* Secondary Mission Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Mission 2: Mars Pathfinder */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
+          <div className="p-4 rounded-xl glass-panel hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -376,7 +379,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Mission 3: Asteroid Surveyor */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
+          <div className="p-4 rounded-xl glass-panel hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -405,7 +408,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Mission 4: Earth Observer */}
-          <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
+          <div className="p-4 rounded-xl glass-panel hover:border-slate-700 flex flex-col justify-between space-y-4 transition-all">
             <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
@@ -464,7 +467,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         </div>
 
         {/* Data Provenance Statement */}
-        <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="p-4 rounded-xl glass-panel flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="font-mono text-xs text-white font-bold flex items-center space-x-2">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
@@ -488,7 +491,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
         {/* Real Data Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: LRO */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl glass-panel/90 flex flex-col justify-between space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-slate-500 uppercase">PDS GEOSCIENCES</span>
@@ -508,7 +511,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Card 2: MRO */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl glass-panel/90 flex flex-col justify-between space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-slate-500 uppercase">PDS IMAGING NODE</span>
@@ -528,7 +531,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Card 3: Perseverance */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl glass-panel/90 flex flex-col justify-between space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-slate-500 uppercase">NASA JPL OPS</span>
@@ -548,7 +551,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Card 4: Earth Blue Marble */}
-          <div className="p-4 rounded-xl bg-slate-950/80 border border-slate-800/90 flex flex-col justify-between space-y-3">
+          <div className="p-4 rounded-xl glass-panel/90 flex flex-col justify-between space-y-3">
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-[10px] text-slate-500 uppercase">NASA EARTH OBSERVATORY</span>
@@ -587,7 +590,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Card 1: Real Data */}
-          <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col space-y-3">
+          <div className="p-6 rounded-2xl glass-panel flex flex-col space-y-3">
             <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
               <Database className="w-5 h-5" />
             </div>
@@ -598,7 +601,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Card 2: Real Science */}
-          <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col space-y-3">
+          <div className="p-6 rounded-2xl glass-panel flex flex-col space-y-3">
             <div className="w-10 h-10 rounded-xl bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-center text-indigo-400">
               <Globe className="w-5 h-5" />
             </div>
@@ -609,7 +612,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
           </div>
 
           {/* Card 3: Simulated Decisions */}
-          <div className="p-6 rounded-2xl bg-slate-950/70 border border-slate-800 flex flex-col space-y-3">
+          <div className="p-6 rounded-2xl glass-panel flex flex-col space-y-3">
             <div className="w-10 h-10 rounded-xl bg-purple-950/60 border border-purple-500/30 flex items-center justify-center text-purple-400">
               <Cpu className="w-5 h-5" />
             </div>
@@ -647,7 +650,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
             return (
               <div
                 key={item.step}
-                className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 flex flex-col justify-between space-y-2 group hover:border-cyan-500/40 transition-colors"
+                className="p-3.5 rounded-xl glass-panel flex flex-col justify-between space-y-2 group hover:border-cyan-500/40 transition-colors"
               >
                 <div className="flex items-center justify-between">
                   <span className="font-mono text-[10px] text-cyan-400 font-bold">{item.step}</span>
@@ -666,7 +669,7 @@ export const TitleScreen: React.FC<TitleScreenProps> = ({
       {/* =========================================================================
           6. HOW TO PLAY / FLIGHT MANUAL PREVIEW
           ========================================================================= */}
-      <section className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-5">
+      <section className="p-6 rounded-2xl glass-panel space-y-5">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <div className="text-xs font-mono text-cyan-400 font-semibold tracking-wider flex items-center space-x-1.5">

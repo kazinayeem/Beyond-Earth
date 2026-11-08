@@ -15,6 +15,7 @@ import { MISSIONS } from '../src/data/missions';
 import { LAUNCH_VEHICLES } from '../src/data/launchers';
 import { TRAJECTORY_PROFILES } from '../src/data/trajectories';
 import { MISSION_EVENTS } from '../src/data/events';
+import { sampleAscent, EVENTS, MAX_Q, TARGET_ALTITUDE_KM, ORBITAL_VELOCITY_KMH, timeCompression, formatMET } from '../src/lib/flight/ascentProfile';
 
 let passed = 0;
 let failed = 0;
@@ -138,53 +139,44 @@ for (const opt of solarStorm?.options || []) {
 // --- 6. LAUNCH SEQUENCE & ASCENT TELEMETRY DYNAMICS ---
 console.log('\n[6/6] Testing Launch Sequence State Machine & Deterministic Telemetry...');
 
-// Deterministic telemetry simulation curve test
-function simulateTelemetry(tSec: number) {
-  if (tSec < 1.6) return { alt: 0, vel: 0, phase: 'IGNITION' };
-  if (tSec < 5.0) {
-    const t = (tSec - 1.6) / 3.4;
-    return { alt: 14.2 * Math.pow(t, 2), vel: 3200 * Math.pow(t, 1.5), phase: 'LIFTOFF' };
-  }
-  if (tSec < 8.5) {
-    const t = (tSec - 5.0) / 3.5;
-    return { alt: 14.2 + (52.0 - 14.2) * t, vel: 3200 + (8600 - 3200) * Math.pow(t, 1.2), phase: 'MAX_Q' };
-  }
-  if (tSec < 11.5) {
-    const t = (tSec - 8.5) / 3.0;
-    return { alt: 52.0 + (128.0 - 52.0) * t, vel: 8600 + (19400 - 8600) * t, phase: 'STAGING' };
-  }
-  if (tSec < 14.0) {
-    const t = (tSec - 11.5) / 2.5;
-    return {
-      alt: 128.0 + (200.0 - 128.0) * Math.sin((t * Math.PI) / 2),
-      vel: 19400 + (28000 - 19400) * Math.sin((t * Math.PI) / 2),
-      phase: 'ORBIT_INSERTION'
-    };
-  }
-  return { alt: 200.0, vel: 28000, phase: 'ORBIT_ACHIEVED' };
+// Real ascent flight model (src/lib/flight/ascentProfile.ts) — not a copy
+const pad = sampleAscent(-2);
+assert(pad.altitudeKm === 0 && pad.velocityKmh === 0 && pad.phase === 'ENGINE_START', 'Engine start keeps vehicle held on the pad (0 km, 0 km/h)');
+assert(pad.throttle > 0 && pad.stage1PropPct === 100, 'Engines spin up before liftoff without consuming tank propellant');
+
+let monotonicAlt = true;
+let monotonicS1 = true;
+let monotonicS2 = true;
+let prevSample = sampleAscent(0);
+for (let t = 0.5; t <= EVENTS.SECO; t += 0.5) {
+  const cur = sampleAscent(t);
+  if (cur.altitudeKm < prevSample.altitudeKm - 1e-9) monotonicAlt = false;
+  if (cur.stage1PropPct > prevSample.stage1PropPct + 1e-9) monotonicS1 = false;
+  if (cur.stage2PropPct > prevSample.stage2PropPct + 1e-9) monotonicS2 = false;
+  prevSample = cur;
 }
+assert(monotonicAlt, 'Altitude never decreases during ascent');
+assert(monotonicS1 && monotonicS2, 'Propellant only decreases (no refuelling jumps between phases)');
 
-const ignitionState = simulateTelemetry(1.0);
-assert(ignitionState.alt === 0 && ignitionState.vel === 0, 'Ignition state keeps rocket anchored at Pad (0 km, 0 km/h)');
+assert(MAX_Q.t > 55 && MAX_Q.t < 90 && MAX_Q.altKm > 8 && MAX_Q.altKm < 16, `Computed Max-Q occurs at T+${MAX_Q.t.toFixed(0)} s / ${MAX_Q.altKm.toFixed(1)} km`);
+assert(MAX_Q.q > 25 && MAX_Q.q < 45, `Peak dynamic pressure is physically plausible (${MAX_Q.q.toFixed(1)} kPa)`);
 
-const liftoffState = simulateTelemetry(3.0);
-assert(liftoffState.alt > 0 && liftoffState.vel > 0, `Liftoff generates positive vertical ascent (${liftoffState.alt.toFixed(1)} km, ${Math.round(liftoffState.vel)} km/h)`);
+const coast = sampleAscent((EVENTS.MECO + EVENTS.SES1) / 2);
+assert(coast.throttle === 0 && coast.accelerationG === 0 && !coast.engineRunning, 'Between MECO and SES-1 no engine burns and sensed acceleration is 0 g');
+assert(sampleAscent(EVENTS.MECO - 1).stage1PropPct < 10, 'Stage 1 is nearly depleted at MECO');
+assert(sampleAscent(EVENTS.STAGE_SEP + 1).stage === 2, 'Vehicle is on stage 2 after separation');
+assert(sampleAscent(EVENTS.FAIRING_SEP - 1).fairingAttached && !sampleAscent(EVENTS.FAIRING_SEP + 1).fairingAttached, 'Fairing jettisons at the scheduled event');
 
-const maxQState = simulateTelemetry(6.5);
-assert(maxQState.phase === 'MAX_Q' && maxQState.alt > 20 && maxQState.alt < 55, `Max-Q occurs within high dynamic pressure atmospheric zone (${maxQState.alt.toFixed(1)} km)`);
+const orbit = sampleAscent(EVENTS.SECO + 5);
+assert(orbit.phase === 'ORBIT_ACHIEVED' && Math.abs(orbit.altitudeKm - TARGET_ALTITUDE_KM) < 0.01, `SECO reaches the ${TARGET_ALTITUDE_KM} km parking orbit`);
+assert(Math.abs(orbit.velocityKmh - ORBITAL_VELOCITY_KMH) < 1, `Orbital velocity matches circular speed at 200 km (${Math.round(orbit.velocityKmh)} km/h)`);
+assert(orbit.stage2PropPct > 0 && orbit.stage2PropPct < 15, 'Stage 2 keeps a small propellant reserve at SECO');
 
-const stagingState = simulateTelemetry(10.0);
-assert(stagingState.phase === 'STAGING' && stagingState.alt >= 52, `Staging separation occurs in mesosphere/thermosphere (${stagingState.alt.toFixed(1)} km)`);
-
-const orbitalState = simulateTelemetry(14.5);
-assert(orbitalState.phase === 'ORBIT_ACHIEVED' && orbitalState.alt === 200.0, `Orbit achieved reaches designated LEO parking altitude (${orbitalState.alt} km)`);
-assert(orbitalState.vel === 28000, `Orbit achieved matches realistic orbital velocity (${orbitalState.vel} km/h)`);
-
-// Test fast forward state consistency
-const fastForwardFinalAlt = 200.0;
-const fastForwardFinalVel = 28000;
-const fastForwardTargetPhase = 'ORBIT_ACHIEVED';
-assert(fastForwardFinalAlt === 200.0 && fastForwardFinalVel === 28000 && fastForwardTargetPhase === 'ORBIT_ACHIEVED', 'Fast Forward produces consistent final orbital state');
+let simSeconds = 0;
+let flightT = 0;
+while (flightT < EVENTS.SECO) { flightT += (1 / 60) * timeCompression(flightT); simSeconds += 1 / 60; }
+assert(simSeconds > 25 && simSeconds < 70, `Ascent plays in ${simSeconds.toFixed(0)} s at 1x (time compression applied)`);
+assert(formatMET(-9.4) === 'T−00:10' && formatMET(75.2) === 'T+01:15', 'MET formatting matches countdown display');
 
 console.log('\n======================================================');
 console.log(`🏁 TEST RESULTS: ${passed} PASSED, ${failed} FAILED`);

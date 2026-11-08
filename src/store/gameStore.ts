@@ -310,10 +310,22 @@ export const useGameStore = create<GameState>((set, get) => {
       set({ isMuted: muted });
     },
 
-    reducedMotion: false,
+    // Default follows the OS setting; an explicit user choice is persisted
+    reducedMotion: (() => {
+      if (typeof window === 'undefined') return false;
+      try {
+        const saved = localStorage.getItem('beyond_earth_reduced_motion');
+        if (saved !== null) return saved === 'true';
+        return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      } catch {
+        return false;
+      }
+    })(),
     toggleReducedMotion: () => {
       sounds.playClick();
-      set((state) => ({ reducedMotion: !state.reducedMotion }));
+      const next = !get().reducedMotion;
+      try { localStorage.setItem('beyond_earth_reduced_motion', String(next)); } catch { /* storage unavailable */ }
+      set({ reducedMotion: next });
     },
 
     credits: initialCredits,

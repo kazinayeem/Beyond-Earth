@@ -1,22 +1,26 @@
 import type { Metadata } from 'next';
-import { Inter, Space_Mono } from 'next/font/google';
+import { Inter, Roboto_Mono, Exo_2 } from 'next/font/google';
 import './globals.css';
 
 const inter = Inter({
-  variable: '--font-sans',
+  variable: '--font-inter',
   subsets: ['latin'],
 });
 
-const spaceMono = Space_Mono({
-  variable: '--font-mono',
-  weight: ['400', '700'],
+const robotoMono = Roboto_Mono({
+  variable: '--font-roboto-mono',
+  subsets: ['latin'],
+});
+
+const exo = Exo_2({
+  variable: '--font-exo',
   subsets: ['latin'],
 });
 
 export const viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  themeColor: '#03060f',
 };
 
 export const metadata: Metadata = {
@@ -31,7 +35,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${spaceMono.variable} dark h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${robotoMono.variable} ${exo.variable} dark h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#020617] text-slate-100 overflow-x-hidden font-sans">
         {children}
       </body>

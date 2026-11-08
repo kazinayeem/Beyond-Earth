@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
 import { StarfieldCanvas } from '@/components/canvas/StarfieldCanvas';
+import { GalaxyBackground } from '@/components/canvas/GalaxyBackground';
 import { TopNavHeader } from '@/components/ui/TopNavHeader';
 import { TitleScreen } from '@/components/screens/TitleScreen';
 import { MissionSelectScreen } from '@/components/screens/MissionSelectScreen';
@@ -20,7 +21,8 @@ import { AchievementsModal } from '@/components/modals/AchievementsModal';
 import { SettingsModal } from '@/components/modals/SettingsModal';
 
 export default function GameMainPage() {
-  const { screen } = useGameStore();
+  const screen = useGameStore(s => s.screen);
+  const reducedMotion = useGameStore(s => s.reducedMotion);
 
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -75,9 +77,13 @@ export default function GameMainPage() {
   };
 
   return (
-    <main className="relative h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden bg-[#020617] text-slate-100">
-      {/* Animated Deep Space Canvas */}
-      <StarfieldCanvas density={120} speed={0.15} />
+    <main className="relative h-[100dvh] max-h-[100dvh] flex flex-col overflow-hidden bg-[#02040b] text-slate-100">
+      {/* Deep-space environment: animated galaxy on the home page, light starfield elsewhere */}
+      {screen === 'title' ? (
+        <GalaxyBackground reducedMotion={reducedMotion} />
+      ) : (
+        <StarfieldCanvas density={120} speed={0.15} />
+      )}
 
       {/* Persistent Flight Director Navigation Bar */}
       <TopNavHeader

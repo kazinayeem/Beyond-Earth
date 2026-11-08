@@ -24,7 +24,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
   useEffect(() => {
     const updateTime = () => {
       const now = new Date();
-      setUtcTime(now.toUTCString().slice(17, 25) + ' UTC');
+      setUtcTime(now.toUTCString().slice(17, 25));
     };
     updateTime();
     const interval = setInterval(updateTime, 1000);
@@ -32,13 +32,14 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
   }, []);
 
   return (
-    <header className="relative z-40 w-full px-4 py-2.5 bg-slate-950/80 backdrop-blur-md border-b border-cyan-500/20 text-slate-200">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <header className="relative z-40 w-full px-3 sm:px-4 py-2.5 bg-slate-950/70 backdrop-blur-md border-b border-white/10 text-slate-200">
+      <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         {/* Left: Brand & Flight Center */}
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setScreen('title')}
-            className="flex items-center space-x-2.5 text-left group"
+            className="flex items-center space-x-2.5 text-left group shrink-0"
+            aria-label="Mission Control home"
           >
             {/* NASA-inspired meatball/vector emblem */}
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.4)] group-hover:scale-105 transition-transform">
@@ -51,7 +52,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
                   SIM
                 </span>
               </div>
-              <div className="text-[10px] font-mono text-cyan-400/80">BEYOND EARTH // OPEN SPACE DATA</div>
+              <div className="hidden sm:block text-[10px] font-mono text-cyan-400/80">BEYOND EARTH // OPEN SPACE DATA</div>
             </div>
           </button>
 
@@ -70,13 +71,13 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
         {/* Center: Live UTC System / Mission Clock */}
         <div className="hidden md:flex items-center space-x-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs font-mono text-cyan-300">
           <span className="text-slate-500">
-            {screen === 'title' || screen === 'missions' ? 'SYSTEM TIME:' : 'MET:'}
+            UTC
           </span>
           <span>{utcTime}</span>
         </div>
 
         {/* Right: Credits & Controls */}
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-2 min-w-0 overflow-x-auto no-scrollbar">
           {/* Player Credits */}
           <div className="flex items-center space-x-1.5 px-3 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
             <span className="text-slate-400">CR:</span>
@@ -87,7 +88,9 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
           <button
             onClick={toggleMute}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
-            title={isMuted ? 'Unmute SFX' : 'Mute SFX'}
+            title={isMuted ? 'Unmute sound' : 'Mute sound'}
+            aria-label={isMuted ? 'Unmute sound' : 'Mute sound'}
+            aria-pressed={isMuted}
           >
             {isMuted ? <VolumeX className="w-4 h-4 text-red-400" /> : <Volume2 className="w-4 h-4 text-cyan-400" />}
           </button>
@@ -104,6 +107,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
                 : 'bg-slate-900 border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white'
             }`}
             title="Explore NASA Datasets"
+            aria-label="NASA data explorer"
           >
             <Database className="w-4 h-4 text-cyan-400" />
             <span className="hidden xl:inline text-[11px] font-mono font-bold text-cyan-300">NASA DATA</span>
@@ -121,6 +125,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
                 : 'bg-slate-900 border-slate-800 hover:border-emerald-500/40 text-slate-300 hover:text-white'
             }`}
             title="NASA Data Provenance & Sources"
+            aria-label="Data sources"
           >
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
             <span className="hidden xl:inline text-[11px] font-mono text-emerald-300">SOURCES</span>
@@ -134,6 +139,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
             }}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
             title="Achievements"
+            aria-label="Achievements"
           >
             <Award className="w-4 h-4 text-purple-400" />
           </button>
@@ -146,6 +152,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
             }}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
             title="Leaderboard"
+            aria-label="Leaderboard"
           >
             <Trophy className="w-4 h-4 text-amber-400" />
           </button>
@@ -158,6 +165,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
             }}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
             title="Flight Manual & Tutorial"
+            aria-label="How to play"
           >
             <HelpCircle className="w-4 h-4 text-cyan-400" />
           </button>
@@ -170,6 +178,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
             }}
             className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
             title="Settings"
+            aria-label="Settings"
           >
             <Sliders className="w-4 h-4 text-slate-300" />
           </button>
@@ -180,6 +189,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({
               onClick={() => setScreen('title')}
               className="p-2 rounded-lg bg-slate-900 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white transition-colors"
               title="Return to Main Title"
+              aria-label="Home"
             >
               <Home className="w-4 h-4 text-slate-300" />
             </button>

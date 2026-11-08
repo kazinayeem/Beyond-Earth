@@ -531,13 +531,13 @@ export const HeroOrbitalVisual: React.FC<HeroOrbitalVisualProps> = ({
   return (
     <div
       ref={containerRef}
-      style={{ width: `${size}px`, height: `${size}px` }}
+      style={{ width: `${size}px`, maxHeight: `${size}px` }}
       onClick={() => {
         if (!isModalOpen) {
           setSelectedSat(null);
         }
       }}
-      className={`relative flex items-center justify-center select-none cursor-pointer group max-w-full h-auto drop-shadow-[0_0_50px_rgba(6,182,212,0.25)] rounded-2xl overflow-hidden ${className}`}
+      className={`relative flex items-center justify-center select-none cursor-pointer group max-w-full aspect-square overflow-hidden ${className}`}
       title="Click any satellite or orbit to inspect real orbital telemetry"
     >
       {/* 3D WebGL Canvas for Earth & 5 Orbital Planes */}
@@ -588,29 +588,16 @@ export const HeroOrbitalVisual: React.FC<HeroOrbitalVisualProps> = ({
       )}
 
       {/* Top Left: Orbital Network Active Badge */}
-      <div className="absolute top-2 left-2 px-2.5 py-1 rounded bg-slate-950/85 border border-cyan-500/30 font-mono text-[10px] text-cyan-400 backdrop-blur-sm pointer-events-none flex items-center space-x-1.5 shadow-lg">
+      <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/60 border border-white/10 font-mono text-[10px] text-cyan-400 backdrop-blur-sm pointer-events-none flex items-center space-x-1.5 shadow-lg">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-        <span>● ORBITAL NETWORK ACTIVE {'//'} 5 SPACECRAFT TRACKED</span>
-      </div>
-
-      {/* Top Right: Simulation / Real Data Badge */}
-      <div className="absolute top-2 right-2 px-2 py-1 rounded bg-slate-950/85 border border-slate-800 font-mono text-[9px] text-slate-300 backdrop-blur-sm pointer-events-none hidden sm:flex items-center space-x-1.5">
-        <Radio className="w-3 h-3 text-cyan-400 animate-pulse" />
-        <span>SIMULATION {'//'} REAL ORBITAL DATA</span>
+        <span>5 SPACECRAFT TRACKED · LIVE ORBITS</span>
       </div>
 
       {/* Bottom Left: Provenance Sources Badge */}
-      <div className="absolute bottom-2 left-2 px-2 py-1 rounded bg-slate-950/85 border border-emerald-500/30 font-mono text-[9px] text-emerald-400 backdrop-blur-sm pointer-events-none flex items-center space-x-1.5">
+      <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/60 border border-white/10 font-mono text-[9px] text-emerald-400 backdrop-blur-sm pointer-events-none flex items-center space-x-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
         <span>CELESTRAK / NASA / USGS / ESA</span>
       </div>
-
-      {/* Bottom Right: Spacecraft Count Badge */}
-      <div className="absolute bottom-2 right-2 px-2.5 py-1 rounded bg-slate-950/85 border border-slate-700/60 font-mono text-[10px] text-slate-400 backdrop-blur-sm pointer-events-none">
-        TRACKING: 05
-      </div>
-
-
 
       {/* Detailed Spacecraft Telemetry Modal */}
       {isModalOpen && selectedSat && (
