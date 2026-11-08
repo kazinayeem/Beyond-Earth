@@ -7,11 +7,14 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx scripts/runTests.ts"
+    "test": "tsx scripts/runTests.ts && tsx scripts/testDatabase.ts",
+    "test:db": "tsx scripts/testDatabase.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",
     "@react-three/fiber": "^9.8.1",
+    "@supabase/ssr": "0.12.7",
+    "@supabase/supabase-js": "2.119.0",
     "@types/three": "^0.186.0",
     "canvas-confetti": "^1.9.4",
     "framer-motion": "^13.4.6",
@@ -25,6 +28,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
     "@tailwindcss/postcss": "^4",
     "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^20",

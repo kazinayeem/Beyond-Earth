@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
+import { OnlineVerificationPanel } from '@/components/network/OnlineVerificationPanel';
 import confetti from 'canvas-confetti';
 import { 
   Trophy, 
@@ -78,6 +79,7 @@ export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => 
 
   return (
     <div className="relative z-10 max-w-5xl mx-auto px-4 py-6 select-none flex flex-col min-h-[calc(100vh-80px)] justify-between">
+      <div className="mb-4"><OnlineVerificationPanel /></div>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

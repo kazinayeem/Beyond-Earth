@@ -1,6 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '@/components/network/AuthProvider';
+import { MISSIONS } from '@/data/missions';
+import type { ScreenState } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
 import { StarfieldCanvas } from '@/components/canvas/StarfieldCanvas';
 import { GalaxyBackground } from '@/components/canvas/GalaxyBackground';
@@ -28,6 +32,34 @@ export default function GameMainPage() {
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
   const [isAchievementsOpen, setIsAchievementsOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const router = useRouter();
+  const { configured, status } = useAuth();
+
+  // Deep links from multiplayer pages: /?view=missions | briefing&mission=mission-03&gm=<squad mission id>
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get('view');
+    const missionId = params.get('mission');
+    const gm = params.get('gm');
+    const store = useGameStore.getState();
+    const mission = MISSIONS.find(m => m.id === missionId);
+    if (mission) store.setActiveMission(mission);
+    store.setGroupMission(gm && mission ? gm : null);
+    const allowed: ScreenState[] = ['missions', 'briefing', 'data_explorer', 'data_sources'];
+    if (view && (allowed as string[]).includes(view)) store.setScreen(view as ScreenState);
+    if (params.toString()) window.history.replaceState(null, '', '/');
+  }, []);
+
+  // Anyone can browse missions and briefings; starting one (spacecraft build onward) needs an account.
+  // The database independently refuses runs from unauthenticated callers.
+  const startedMission = ['builder', 'launcher_trajectory', 'launch', 'mission_control', 'debrief'].includes(screen);
+  useEffect(() => {
+    if (configured && status === 'signedOut' && startedMission) {
+      const missionId = useGameStore.getState().activeMission.id;
+      useGameStore.getState().setScreen('briefing');
+      router.push(`/login?next=${encodeURIComponent(`/?view=briefing&mission=${missionId}`)}&reason=mission`);
+    }
+  }, [configured, status, startedMission, router]);
 
   const renderActiveScreen = () => {
     switch (screen) {

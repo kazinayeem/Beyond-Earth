@@ -1,0 +1,34 @@
+import React from 'react';
+import Link from 'next/link';
+
+/** Two-column cinematic frame for auth screens. */
+export function AuthFrame({ eyebrow, title, subtitle, children, footer }: {
+  eyebrow: string; title: string; subtitle: string; children: React.ReactNode; footer?: React.ReactNode;
+}) {
+  return (
+    <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-14 grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
+      <div className="hidden lg:block">
+        <div className="auth-planet" aria-hidden />
+        <div className="hud-label text-cyan-300/80 mt-8">Mission Control network</div>
+        <p className="font-display text-4xl font-semibold leading-tight text-white mt-2">
+          One permanent pilot ID.<br />Three-person squads.<br /><span className="text-cyan-200">Every result verified.</span>
+        </p>
+        <ul className="mt-6 space-y-2 text-slate-400 text-sm">
+          <li>· Your progress, credits and achievements follow you to any device</li>
+          <li>· Fly asynchronous squad missions and share coordination bonuses</li>
+          <li>· Compete on global, weekly and squad leaderboards</li>
+        </ul>
+      </div>
+      <div className="w-full max-w-md mx-auto lg:mx-0 lg:justify-self-end">
+        <div className="rounded-3xl glass-panel p-6 sm:p-8 auth-card">
+          <div className="hud-label text-cyan-300/80">{eyebrow}</div>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold text-white mt-1">{title}</h1>
+          <p className="text-sm text-slate-400 mt-1.5 mb-6">{subtitle}</p>
+          {children}
+        </div>
+        {footer && <div className="mt-4 text-center text-sm text-slate-400">{footer}</div>}
+        <div className="mt-3 text-center"><Link href="/" className="text-xs text-slate-500 hover:text-slate-300">← Back to Mission Control</Link></div>
+      </div>
+    </div>
+  );
+}

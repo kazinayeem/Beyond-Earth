@@ -20,6 +20,15 @@ import { TRAJECTORY_PROFILES } from '@/data/trajectories';
 import { MISSION_EVENTS } from '@/data/events';
 import { INITIAL_ACHIEVEMENTS } from '@/data/achievements';
 import { sounds } from '@/lib/sound';
+import { startMissionRunAction, completeMissionRunAction, type VerifiedMissionResult } from '@/app/actions/network';
+import { isSupabaseConfigured } from '@/lib/supabase/config';
+
+export type OnlineResultState =
+  | { state: 'idle' }
+  | { state: 'offline'; reason: string }
+  | { state: 'pending' }
+  | { state: 'verified'; data: VerifiedMissionResult }
+  | { state: 'error'; error: string };
 
 interface GameState {
   // Navigation
@@ -119,6 +128,15 @@ interface GameState {
   debriefResult: MissionDebriefResult | null;
   completeMission: (status: 'SUCCESS' | 'PARTIAL' | 'FAILURE') => void;
   resetForNewMission: () => void;
+
+  // Online (server-verified) participation
+  groupMissionId: string | null;
+  setGroupMission: (id: string | null) => void;
+  runId: string | null;
+  runError: string | null;
+  onlineResult: OnlineResultState;
+  startOnlineRun: () => Promise<void>;
+  submitOnlineResult: () => Promise<void>;
 }
 
 // Helper to compute stats
@@ -747,6 +765,54 @@ export const useGameStore = create<GameState>((set, get) => {
         credits: nextCredits,
         leaderboard: updatedLb
       });
+      void get().submitOnlineResult();
+    },
+
+    groupMissionId: null,
+    setGroupMission: (id) => set({ groupMissionId: id }),
+    runId: null,
+    runError: null,
+    onlineResult: { state: 'idle' },
+
+    // Register the attempt server-side at commit-to-launch. The run id is the only
+    // handle the server accepts for rewards; failures leave the game playable offline.
+    startOnlineRun: async () => {
+      if (!isSupabaseConfigured) return;
+      set({ runId: null, runError: null, onlineResult: { state: 'idle' } });
+      try {
+        const res = await startMissionRunAction(get().activeMission.id, get().groupMissionId);
+        if (res.ok) set({ runId: res.data });
+        else set({ runError: res.error });
+      } catch {
+        set({ runError: 'Mission Control server unreachable.' });
+      }
+    },
+
+    // Send raw simulation readings; the database recomputes and caps every reward.
+    submitOnlineResult: async () => {
+      const { runId, debriefResult, runError } = get();
+      if (!debriefResult) return;
+      if (!runId) {
+        set({ onlineResult: { state: 'offline', reason: runError ?? 'Not signed in — result kept on this device only.' } });
+        return;
+      }
+      set({ onlineResult: { state: 'pending' } });
+      try {
+        const res = await completeMissionRunAction({
+          runId,
+          status: debriefResult.status,
+          science: debriefResult.scienceCollected,
+          fuelPct: debriefResult.fuelRemainingPct,
+          riskPct: debriefResult.riskFinalPct,
+        });
+        if (res.ok) {
+          set({ onlineResult: { state: 'verified', data: res.data }, runId: null });
+        } else {
+          set({ onlineResult: { state: 'error', error: res.error } });
+        }
+      } catch {
+        set({ onlineResult: { state: 'error', error: 'Mission Control server unreachable.' } });
+      }
     },
 
     resetForNewMission: () => {
@@ -761,6 +827,10 @@ export const useGameStore = create<GameState>((set, get) => {
         resolvedEventIds: [],
         decisionLog: [],
         debriefResult: null,
+        runId: null,
+        runError: null,
+        onlineResult: { state: 'idle' },
+        groupMissionId: null,
         selectedComponentIds: defaultComponentIds,
         ...stats
       });

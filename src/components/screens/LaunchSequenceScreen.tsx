@@ -146,6 +146,7 @@ export const LaunchSequenceScreen: React.FC = () => {
     if (stageRef.current !== 'ready') return;
     sounds.playSelect();
     sounds.say('T minus ten', { interrupt: true });
+    void useGameStore.getState().startOnlineRun(); // server-side run registration (rewards need it)
     stageRef.current = 'flight';
     setStage('flight');
     setLaunchStatus('COUNTING');
