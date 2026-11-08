@@ -14,9 +14,14 @@ export interface AuthFormState {
   notice?: string;
 }
 
+/** Live site. Email links (confirmation, password reset, Google sign-in) always point here in production. */
+const PRODUCTION_URL = 'https://beyond-earth-xi.vercel.app';
+
+/** Production: the live site. Local dev (`next dev`): the address you're browsing, e.g. http://localhost:3000. */
 async function siteOrigin() {
+  if (process.env.NODE_ENV === 'production') return PRODUCTION_URL;
   const h = await headers();
-  return process.env.NEXT_PUBLIC_SITE_URL ?? h.get('origin') ?? `https://${h.get('host')}`;
+  return h.get('origin') ?? `http://${h.get('host') ?? 'localhost:3000'}`;
 }
 
 const passwordSchema = z
@@ -107,7 +112,12 @@ export async function loginAction(_: AuthFormState, form: FormData): Promise<Aut
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
-    if (/not confirmed/i.test(error.message)) return { error: 'Confirm your email first — check your inbox for the verification link.' };
+    if (/not confirmed/i.test(error.message)) {
+      // Send a fresh link with the correct site address (older links may point somewhere stale)
+      const origin = await siteOrigin();
+      await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${origin}/auth/callback?next=${encodeURIComponent('/profile?welcome=1')}` } });
+      return { error: 'Confirm your email first. We just sent you a new verification link.' };
+    }
     if (/invalid login/i.test(error.message)) return { error: 'Email or password is incorrect.' };
     return { error: error.message };
   }

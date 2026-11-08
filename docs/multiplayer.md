@@ -49,8 +49,8 @@ SEED_PRIMARY_PASSWORD=…       # password for the primary account
 
 | Setting | Value |
 |---|---|
-| Site URL | your deployed origin, e.g. `https://beyond-earth.example` |
-| Redirect URLs | `http://localhost:3000/auth/callback`, `https://<your-domain>/auth/callback` |
+| Site URL | `https://beyond-earth-xi.vercel.app` (if this stays `http://localhost:3000`, confirmation emails link to localhost) |
+| Redirect URLs | `https://beyond-earth-xi.vercel.app/**`, `https://*-<vercel-team>.vercel.app/**` (preview deployments, optional), `http://localhost:3000/**` |
 | Email confirmations | On (recommended) |
 | Google provider (optional) | Enable it and add the OAuth client ID and secret. The Google button appears automatically once it's on. |
 
@@ -63,8 +63,6 @@ The default email templates work as they are. Confirmation and recovery links la
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://czuofwvddtnohwnfienx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
-# optional, used in email redirect links when running behind a proxy
-NEXT_PUBLIC_SITE_URL=https://<your-domain>
 ```
 
 The app itself never uses the service-role key. Only `scripts/supabase/seedPlayers.ts` and `verifyLive.ts` read `SUPABASE_SERVICE_ROLE_KEY`, and they run in Node, outside the Next.js bundle.
