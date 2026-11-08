@@ -14,6 +14,17 @@
 --   • Internal helpers live in the non-exposed `private` schema.
 -- =============================================================================
 
+-- Re-run guard: when this file is pasted into the SQL editor a second time,
+-- stop with a clear message instead of failing halfway on "already exists".
+do $$
+begin
+  if to_regclass('public.profiles') is not null and to_regclass('public.mission_results') is not null then
+    raise exception 'MULTIPLAYER_CORE_ALREADY_APPLIED'
+      using hint = 'This migration is already in the database. Apply only the newer files in supabase/migrations/.';
+  end if;
+end;
+$$;
+
 create schema if not exists private;
 revoke all on schema private from public;
 grant usage on schema private to anon, authenticated;  -- needed so RLS policies can call helper predicates

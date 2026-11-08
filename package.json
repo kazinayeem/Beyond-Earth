@@ -8,7 +8,11 @@
     "start": "next start",
     "lint": "eslint",
     "test": "tsx scripts/runTests.ts && tsx scripts/testDatabase.ts",
-    "test:db": "tsx scripts/testDatabase.ts"
+    "test:db": "tsx scripts/testDatabase.ts",
+    "db:link": "npx -y supabase@2 link --project-ref czuofwvddtnohwnfienx",
+    "db:push": "npx -y supabase@2 db push",
+    "seed:players": "tsx scripts/supabase/seedPlayers.ts",
+    "verify:supabase": "tsx scripts/supabase/verifyLive.ts"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

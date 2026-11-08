@@ -220,6 +220,10 @@ async function main() {
   await as(ben);
   ok(await fails(`select public.start_mission('mission-03', $1)`, [gm], /ALREADY_FLOWN/), 'cannot fly the same squad mission twice');
   ok((await q(`select * from public.mission_results where player_id = $1`, [ana])).length >= 1, 'squad mates can see each other\'s squad results');
+  ok((await q(`select * from public.mission_participants where run_id = $1`, [ra])).length === 1, 'squad mates can see each other\'s squad mission participation');
+  ok((await q(`select * from public.mission_participants where run_id = $1`, [run1])).length === 0, 'solo runs stay private to their pilot');
+  await as(null);
+  ok(await fails(`select * from public.mission_participants`, [], /permission denied/), 'visitors cannot list mission participants');
 
   // ── Leaderboards & privacy ──
   console.log('[leaderboards & privacy]');
@@ -238,6 +242,23 @@ async function main() {
   ok(!(await q<{ player_id: string }>(`select * from public.get_leaderboard('credits', 'all', 50)`)).some(r => r.player_id === ana), 'private players excluded from public leaderboards');
   await as(ana);
   ok((await q(`select * from public.player_statistics where player_id = $1`, [ana])).length === 1, 'private player still sees own stats');
+
+  // ── Health check & re-run guard ──
+  console.log('[health]');
+  await as(null);
+  const h = (await q<{ h: { missing_tables: string[]; rls_disabled: string[]; signup_trigger: boolean; missions: number; achievements: number } }>(`select public.multiplayer_health() as h`))[0].h;
+  ok(h.missing_tables.length === 0 && h.rls_disabled.length === 0, 'health check: every table present with RLS enabled');
+  ok(h.signup_trigger && h.missions === 4 && h.achievements === 8, 'health check: signup trigger and catalogs in place');
+  await asAdmin();
+  const core = readdirSync(join(root, 'supabase/migrations')).filter(f => f.endsWith('.sql')).sort()[0];
+  let guardMsg = '';
+  try { await db.exec(readFileSync(join(root, 'supabase/migrations', core), 'utf8')); } catch (e) { guardMsg = String((e as Error).message); }
+  ok(/ALREADY_APPLIED/.test(guardMsg), 're-running the core migration stops with a clear message');
+  for (const f of readdirSync(join(root, 'supabase/migrations')).filter(f => f.endsWith('.sql')).sort().slice(1)) {
+    let again = true;
+    try { await db.exec(readFileSync(join(root, 'supabase/migrations', f), 'utf8')); } catch { again = false; }
+    ok(again, `${f} can be re-applied safely`);
+  }
 
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed) process.exit(1);

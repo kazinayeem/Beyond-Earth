@@ -34,7 +34,7 @@ export function friendlyError(err: { message?: string; code?: string } | null | 
   if (err.code === '42501' || /permission denied/i.test(raw)) return 'You do not have permission to do that.';
   if (/check constraint/i.test(raw)) return 'Some fields are invalid.';
   if (/schema cache|does not exist|Could not find the function/i.test(raw)) {
-    return 'Multiplayer database not initialised yet (apply supabase/migrations).';
+    return 'Multiplayer isn’t set up on the server yet. Check /status for details.';
   }
   return 'Mission Control could not complete that request.';
 }

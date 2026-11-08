@@ -52,7 +52,7 @@ export async function registerAction(_: AuthFormState, form: FormData): Promise<
   const supabase = await createClient();
 
   const { data: available, error: availErr } = await supabase.rpc('username_available', { candidate: v.username });
-  if (availErr) return { error: 'Registration is temporarily unavailable (database not initialised).' };
+  if (availErr) return { error: 'Registration is unavailable until the multiplayer database is set up. Check /status for details.' };
   if (!available) return { fieldErrors: { username: 'That username is taken' } };
 
   const origin = await siteOrigin();

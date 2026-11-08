@@ -2,14 +2,42 @@
 
 Mission Control uses Supabase for accounts, player identity, squads, verified mission results and leaderboards. The single-player simulator still works without it.
 
-## 1. Apply the database migration
+## 1. Apply the database migrations
 
-The schema lives in `supabase/migrations/20261108120000_multiplayer_core.sql`. Apply it once, using either method:
+The schema lives in `supabase/migrations/`, applied in filename order:
 
-- **Dashboard:** open SQL Editor → New query, paste the file, and run it.
-- **CLI:** run `supabase link --project-ref czuofwvddtnohwnfienx`, then `supabase db push`.
+| File | What it adds |
+|---|---|
+| `20261108120000_multiplayer_core.sql` | All tables, RLS policies, triggers and RPCs |
+| `20261108130000_health_and_participants.sql` | `multiplayer_health()`, the `mission_participants` view, squad run visibility, stats timestamp trigger |
 
-Then run the Supabase security advisors (Dashboard → Advisors) and confirm there are no RLS warnings.
+**With the CLI (recommended):**
+
+```bash
+npx supabase@2 login        # opens a browser once
+npm run db:link             # asks for the database password (Dashboard → Project Settings → Database)
+npm run db:push             # applies every pending migration, in order, and records it
+```
+
+**Or in the dashboard:** SQL Editor → New query, then paste and run each file in the order above. The core file refuses to run twice (`MULTIPLAYER_CORE_ALREADY_APPLIED`), and the second file is safe to re-run. Don't mix the two methods: the CLI doesn't know about files you ran by hand.
+
+Then open `/status` in the app. All four checks should read OK (the profile check needs you to be signed in). The Supabase security advisors (Dashboard → Advisors) should show no RLS warnings.
+
+## Seed accounts (optional)
+
+`npm run seed:players` creates five real Supabase Auth accounts through the Admin API, plus the squad "Orbital Pioneers" (the primary account as leader, Nova and Kai as members; Lena and Arjun stay outside). It needs two extra values in `.env.local`:
+
+```
+SUPABASE_SERVICE_ROLE_KEY=…   # Dashboard → Project Settings → API keys → secret key. Server scripts only.
+SEED_PRIMARY_PASSWORD=…       # password for the primary account
+```
+
+- **Primary account:** `kazinayeem55085@gmail.com` (override with `SEED_PRIMARY_EMAIL`, `SEED_PRIMARY_USERNAME`, `SEED_PRIMARY_DISPLAY_NAME`). If the account already exists, its password is set to `SEED_PRIMARY_PASSWORD`.
+- **Test accounts:** `mc-test-{nova,kai,lena,arjun}@example.com`. `example.com` is reserved (RFC 2606), so no mail reaches a real person; set `SEED_TEST_EMAIL_DOMAIN` to change it. Their random passwords are written to `.seed-credentials.local.json` (gitignored, mode 600) and never printed.
+- **How it runs:** all accounts are email-confirmed. Profiles and player IDs come from the same database trigger a real sign-up uses, and squad membership goes through the real invite/accept RPCs. Everyone starts with 1,000 credits, 0 XP and 0 science.
+- **Running it again** updates rather than duplicates: no extra users, profiles or squads, and earned progress is kept.
+
+`npm run verify:supabase` then runs live checks against the project: sign-in for all five accounts, profiles and unique player IDs, RLS (no editing others' profiles, no writing credits, no forged results), the squad limit (it temporarily opens a seat, lets two outsiders try to accept, and confirms the 4th is refused, then restores the squad), and leaderboards. Add `APP_URL=http://localhost:3000` to also check that the app pages load without a database warning.
 
 ## 2. Configure Auth (Dashboard → Authentication)
 
@@ -33,7 +61,7 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
 NEXT_PUBLIC_SITE_URL=https://<your-domain>
 ```
 
-No service-role key is used anywhere in the app.
+The app itself never uses the service-role key. Only `scripts/supabase/seedPlayers.ts` and `verifyLive.ts` read `SUPABASE_SERVICE_ROLE_KEY`, and they run in Node, outside the Next.js bundle.
 
 ## Access model
 
@@ -87,6 +115,7 @@ No service-role key is used anywhere in the app.
 ```bash
 npm test          # game data and flight model, plus the database suite
 npm run test:db   # migrations + RLS + RPC tests on in-process Postgres (PGlite)
+npm run verify:supabase   # live checks against your Supabase project (after seeding)
 ```
 
 The database suite applies the real migration with a small Supabase auth shim and covers:
