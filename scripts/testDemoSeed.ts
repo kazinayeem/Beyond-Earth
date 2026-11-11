@@ -50,6 +50,11 @@ async function main() {
   ok((await one<{ n: number }>(`select count(*)::int n from public.player_achievements`)).n > 100, 'achievements unlocked');
   const lb = (await db.query(`select * from public.get_leaderboard('xp','week',10)`)).rows.length;
   ok(lb === 10, 'weekly leaderboard populated');
+  await db.exec(readFileSync(join(root, 'supabase/seeds/demo_crew_roles.sql'), 'utf8'));
+  const cr = await one<{ dup: number; kinds: number }>(`select
+    (select count(*) from (select group_id from public.group_members group by group_id having count(distinct crew_role) <> count(*)) d)::int dup,
+    (select count(distinct crew_role) from public.group_members)::int kinds`);
+  ok(cr.dup === 0 && cr.kinds === 4, 'demo squads get distinct, mixed crew roles');
   const before = await one<{ r: number; g: number }>(`select (select count(*) from public.mission_results)::int r, (select count(*) from public.groups)::int g`);
   await db.exec(seed);
   const after = await one<{ u: number; r: number; g: number }>(`select (select count(*) from auth.users)::int u, (select count(*) from public.mission_results)::int r, (select count(*) from public.groups)::int g`);

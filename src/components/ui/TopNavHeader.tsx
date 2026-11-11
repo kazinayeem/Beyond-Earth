@@ -28,7 +28,6 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
   const pathname = usePathname();
   const screen = useGameStore(s => s.screen);
   const setScreen = useGameStore(s => s.setScreen);
-  const localCredits = useGameStore(s => s.credits);
   const isMuted = useGameStore(s => s.isMuted);
   const toggleMute = useGameStore(s => s.toggleMute);
   const activeMission = useGameStore(s => s.activeMission);
@@ -63,7 +62,6 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
     }
   };
 
-  const credits = status === 'signedIn' && player ? player.credits : localCredits;
   const rank = player ? rankProgress(player.xp).rank : null;
   const inFlow = onGame && !['title', 'missions', 'data_explorer', 'data_sources'].includes(screen);
 
@@ -106,11 +104,15 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
 
         <div className="flex items-center gap-1.5 shrink-0">
           <span className="hidden md:inline font-mono text-[11px] text-slate-500 tabular-nums mr-1" aria-label="UTC time">UTC {utc}</span>
-          <span className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/25 text-emerald-300 text-xs font-mono"
-            title={status === 'signedIn' ? 'Server-verified credits' : 'Local (offline) credits'}>
-            <span className="text-slate-500">CR</span>
-            <span className="tabular-nums" suppressHydrationWarning>{credits.toLocaleString()}</span>
-          </span>
+          {/* Signed-in players see their real, server-verified balance; visitors see nothing */}
+          {status === 'signedIn' && player && (
+            <Link href="/profile" className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-lg bg-emerald-950/40 border border-emerald-500/25 text-xs font-mono hover:border-emerald-400/50 transition-colors"
+              title="Your credits and experience (from your player record)">
+              <span className="text-emerald-300"><span className="text-slate-500 mr-1">CR</span><span className="tabular-nums">{player.credits.toLocaleString()}</span></span>
+              <span className="w-px h-3 bg-white/10" aria-hidden />
+              <span className="text-cyan-200"><span className="text-slate-500 mr-1">XP</span><span className="tabular-nums">{player.xp.toLocaleString()}</span></span>
+            </Link>
+          )}
           <button type="button" onClick={toggleMute} className="hud-btn" aria-label={isMuted ? 'Unmute sound' : 'Mute sound'} aria-pressed={isMuted}>
             {isMuted ? <VolumeX className="w-4 h-4 text-rose-300" /> : <Volume2 className="w-4 h-4" />}
           </button>

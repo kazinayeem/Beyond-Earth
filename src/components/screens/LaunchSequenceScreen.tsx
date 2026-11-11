@@ -321,6 +321,7 @@ export const LaunchSequenceScreen: React.FC = () => {
           onModeChange={setCamMode}
           apiRef={camApi}
           vehicleLabel={activeMission.code}
+          destination={activeMission.target}
         />
 
         {/* ── Camera toolbar (left edge, vertically centred) ── */}

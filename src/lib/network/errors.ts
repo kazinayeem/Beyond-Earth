@@ -24,6 +24,7 @@ const MESSAGES: Record<string, string> = {
   RUN_TOO_SHORT: 'Mission reported faster than the simulation allows — not verified.',
   INVALID_STATUS: 'Invalid mission outcome.',
   INVALID_CATEGORY: 'Unknown leaderboard category.',
+  INVALID_CREW_ROLE: 'Choose a valid crew role.',
   IMMUTABLE_FIELD: 'Player ID and username cannot be changed.',
 };
 

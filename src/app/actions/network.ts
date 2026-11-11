@@ -10,6 +10,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { friendlyError, type ActionResult } from '@/lib/network/errors';
+import { CREW_ROLE_IDS } from '@/lib/network/crewRoles';
 
 async function authed() {
   const supabase = await createClient();
@@ -103,9 +104,18 @@ export async function updateGroupAction(input: { name: string; description: stri
   return rpc('update_group', { p_name: v.name, p_description: v.description, p_emblem: v.emblem, p_specialization: v.specialization });
 }
 
-export async function invitePlayerAction(playerId: string) {
+const crewRoleSchema = z.enum(CREW_ROLE_IDS);
+
+export async function invitePlayerAction(playerId: string, crewRole: string = 'engineer') {
   if (!uuid.safeParse(playerId).success) return { ok: false, error: 'Player not found.' } as const;
-  return rpc<string>('invite_to_group', { p_invitee: playerId }, ['/squad', '/players']);
+  if (!crewRoleSchema.safeParse(crewRole).success) return { ok: false, error: 'Choose a crew role.' } as const;
+  return rpc<string>('invite_to_group', { p_invitee: playerId, p_crew_role: crewRole }, ['/squad', '/players']);
+}
+
+export async function setCrewRoleAction(playerId: string, crewRole: string) {
+  if (!uuid.safeParse(playerId).success) return { ok: false, error: 'Player not found.' } as const;
+  if (!crewRoleSchema.safeParse(crewRole).success) return { ok: false, error: 'Choose a crew role.' } as const;
+  return rpc('set_crew_role', { p_player: playerId, p_crew_role: crewRole });
 }
 
 export async function respondInvitationAction(invitationId: string, accept: boolean) {

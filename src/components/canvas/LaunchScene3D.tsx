@@ -20,7 +20,8 @@ import React, { useEffect, useImperativeHandle, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { sampleAscent, EVENTS, type AscentSample } from '@/lib/flight/ascentProfile';
-import { getMoonTextures } from '@/lib/planetTextures';
+import { asteroidGeometry, createBodyMaterial } from '@/components/canvas/PlanetBackdrop';
+import type { MissionData } from '@/types/game';
 
 export interface LaunchViewState {
   sample: AscentSample;
@@ -46,6 +47,8 @@ interface Props {
   onModeChange?: (m: CameraMode) => void;
   apiRef?: React.Ref<LaunchCameraApi>;
   vehicleLabel?: string;
+  /** Mission destination, shown in the sky once the vehicle is above the atmosphere */
+  destination?: MissionData['target'];
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────
@@ -596,13 +599,14 @@ class Pool {
 interface Pose { pos: THREE.Vector3; target: THREE.Vector3; up: THREE.Vector3; fov: number }
 
 export const LaunchScene3D: React.FC<Props> = ({
-  getState, onFrame, reducedMotion = false, mode, onModeChange, apiRef, vehicleLabel = 'VEHICLE',
+  getState, onFrame, reducedMotion = false, mode, onModeChange, apiRef, vehicleLabel = 'VEHICLE', destination = 'Moon',
 }) => {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const markerRef = useRef<HTMLDivElement | null>(null);
   const getStateRef = useRef(getState);
   const onFrameRef = useRef(onFrame);
   const reducedRef = useRef(reducedMotion);
+  const destinationRef = useRef(destination);
   const modeRef = useRef<CameraMode>(mode);
   const onModeRef = useRef(onModeChange);
   const ctrlRef = useRef<LaunchCameraApi | null>(null);
@@ -832,14 +836,29 @@ export const LaunchScene3D: React.FC<Props> = ({
     orbitLine.frustumCulled = false;
     pad.add(orbitLine);
 
-    // ── Distant celestial objects: Moon ──
-    const moonTex = getMoonTextures();
-    const moon = new THREE.Mesh(
-      new THREE.SphereGeometry(1737 * 0.45, 48, 24),
-      new THREE.MeshStandardMaterial({ map: moonTex.map, bumpMap: moonTex.bumpMap, bumpScale: 2, roughness: 1 }),
-    );
-    moon.position.copy(new THREE.Vector3(-0.55, 0.42, -0.72).normalize().multiplyScalar(170000));
-    scene.add(moon);
+    // ── Mission destination in the sky (Moon, Mars or asteroid) ──
+    // Drawn in the background pass at a fixed angular size, ahead of the vehicle and
+    // a little above the horizon, so it rises into the "upper" shot once the vehicle
+    // leaves the atmosphere. Sizes are enlarged for readability (the real Moon is 0.5°).
+    // For the Earth-orbit mission the destination is Earth itself, so the Moon is shown small.
+    const destTarget = destinationRef.current;
+    const destKind = destTarget === 'Mars' ? 1 : destTarget === 'Asteroid' ? 2 : 0;
+    const destMat = createBodyMaterial(destKind, SUN_DIR.clone());
+    destMat.depthTest = false;
+    destMat.depthWrite = false;
+    const dest = new THREE.Mesh(destKind === 2 ? asteroidGeometry() : new THREE.SphereGeometry(1, 96, 64), destMat);
+    dest.renderOrder = -8; // after stars (-10) and sky (-9); Earth in the main pass still covers it
+    dest.frustumCulled = false;
+    dest.rotation.set(destKind === 2 ? 0.5 : 0.1, 0.8, destKind === 1 ? 0.44 : 0.05);
+    const DEST_DIST = 300; // inside the sky dome (r 500), which also follows the camera
+    const destDeg = destTarget === 'Earth Orbit' ? 1.6 : destKind === 0 ? 4.2 : destKind === 1 ? 3.2 : 2.2;
+    dest.scale.setScalar(DEST_DIST * Math.tan(THREE.MathUtils.degToRad(destDeg)));
+    bgScene.add(dest);
+    // direction in the pad frame: along the flight path at orbit insertion, a few degrees above the horizon, nudged north
+    const insertion = vehicleBasis(sampleAscent(EVENTS.INSERTION_START));
+    const destDirLocal = insertion.axis.clone().addScaledVector(insertion.up, 0.07).add(new THREE.Vector3(0, 0, -0.18)).normalize();
+    const destLight = new THREE.Vector3();
+    const destDir = new THREE.Vector3();
 
     // ── Star field (follows camera; infinitely far) ──
     const STARS = lowEnd ? 2200 : 4200;
@@ -1352,6 +1371,14 @@ export const LaunchScene3D: React.FC<Props> = ({
       skyMat.uniforms.density.value = 1 - sstep(12, 75, camAlt);
       sky.position.copy(camera.position);
       stars.position.copy(camera.position);
+      destDir.copy(destDirLocal).transformDirection(pad.matrixWorld);
+      dest.position.copy(camera.position).addScaledVector(destDir, DEST_DIST);
+      // lit mostly from behind the viewer (a bright gibbous phase), with the scene's sun side-light
+      destLight.copy(SUN_DIR).multiplyScalar(0.6).addScaledVector(destDir, -1).normalize();
+      destMat.uniforms.sunDir.value.copy(destLight);
+      destMat.uniforms.fade.value = sstep(90, 190, camAlt);
+      dest.visible = destMat.uniforms.fade.value > 0.001;
+      if (!reduced && !st.paused) dest.rotation.y += dtReal * (destKind === 2 ? 0.06 : 0.01);
       starMat.uniforms.uTime.value = wall;
       starMat.uniforms.uVisible.value = 0.08 + 0.92 * sstep(15, 70, camAlt);
       groundMat.opacity = 1 - sstep(60, 220, camAlt);

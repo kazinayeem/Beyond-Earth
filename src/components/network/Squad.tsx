@@ -6,8 +6,9 @@ import { useRouter } from 'next/navigation';
 import { Crown, UserPlus, LogOut, UserMinus, Rocket, Check, X, Loader2, Users, Plus, Clock, Shield } from 'lucide-react';
 import {
   createGroupAction, respondInvitationAction, cancelInvitationAction, leaveGroupAction, removeMemberAction,
-  transferLeadershipAction, createGroupMissionAction,
+  transferLeadershipAction, createGroupMissionAction, setCrewRoleAction,
 } from '@/app/actions/network';
+import { CREW_ROLES, crewRole } from '@/lib/network/crewRoles';
 import { MISSIONS } from '@/data/missions';
 import { AVATAR_COLORS, AVATAR_SHAPES } from '@/lib/network/avatars';
 import type { getSquadDashboard, InvitationRow } from '@/lib/network/queries';
@@ -57,7 +58,7 @@ export function ReceivedInvites({ invites }: { invites: InvitationRow[] }) {
             <PlayerAvatar avatar={inv.group?.emblem} size={40} />
             <div className="flex-1 min-w-0">
               <div className="text-white">{inv.group?.name} <span className="text-xs font-mono text-slate-500">{inv.group?.group_code}</span></div>
-              <div className="text-xs text-slate-400">Invited by {inv.inviter?.display_name} · {timeLeft(inv.expires_at)}</div>
+              <div className="text-xs text-slate-400">Invited by {inv.inviter?.display_name} as <span className="text-cyan-200">{crewRole(inv.crew_role).label}</span> · {timeLeft(inv.expires_at)}</div>
             </div>
             <button type="button" disabled={pending} onClick={() => run(() => respondInvitationAction(inv.id, true), () => sounds.playMilestone())}
               className="cta-primary rounded-lg px-3 py-1.5 text-sm font-semibold text-slate-950 inline-flex items-center gap-1.5"><Check className="w-4 h-4" /> Join</button>
@@ -181,6 +182,13 @@ export function SquadDashboard({ d }: { d: FullDash }) {
                 {m.role === 'leader' && <Crown className="w-4 h-4 text-amber-300" aria-label="Leader" />}{m.profile.display_name}
               </div>
               <Link href={`/players/${m.profile.player_code}`} className="text-xs font-mono text-slate-400 hover:text-cyan-200">{m.profile.player_code}</Link>
+              <CrewRoleBadge
+                role={m.crew_role}
+                editable={isLeader || m.player_id === d.uid}
+                disabled={pending}
+                name={m.profile.display_name}
+                onChange={r => run(() => setCrewRoleAction(m.player_id, r))}
+              />
               <div className="mt-3 grid grid-cols-2 gap-2 w-full text-center">
                 <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Science</div><div className="font-mono text-sm">{m.stats?.science_total ?? '—'}</div></div>
                 <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Missions</div><div className="font-mono text-sm">{m.stats?.missions_completed ?? '—'}</div></div>
@@ -251,7 +259,7 @@ export function SquadDashboard({ d }: { d: FullDash }) {
                 <PlayerAvatar avatar={inv.invitee?.avatar} size={34} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-white truncate">{inv.invitee?.display_name}</div>
-                  <div className="text-xs text-slate-500">{timeLeft(inv.expires_at)}</div>
+                  <div className="text-xs text-slate-500">{crewRole(inv.crew_role).label} · {timeLeft(inv.expires_at)}</div>
                 </div>
                 <button type="button" disabled={pending} onClick={() => run(() => cancelInvitationAction(inv.id))} className="text-xs text-slate-400 hover:text-rose-200">Withdraw</button>
               </li>
@@ -290,5 +298,28 @@ export function SquadDashboard({ d }: { d: FullDash }) {
         )}
       </div>
     </div>
+  );
+}
+
+/** A member's crew role. The leader (or the member themselves) can change it in place. */
+function CrewRoleBadge({ role, editable, disabled, name, onChange }: { role: string; editable: boolean; disabled: boolean; name: string; onChange: (r: string) => void }) {
+  const r = crewRole(role);
+  const Icon = r.icon;
+  if (!editable) {
+    return (
+      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-1 text-[11px] text-cyan-100" title={r.blurb}>
+        <Icon className="w-3.5 h-3.5" aria-hidden /> {r.label}
+      </span>
+    );
+  }
+  return (
+    <span className="mt-2 relative inline-flex">
+      <Icon className="w-3.5 h-3.5 text-cyan-200 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
+      <select aria-label={`Crew role for ${name}`} value={r.id} disabled={disabled} onChange={e => onChange(e.target.value)}
+        className="appearance-none rounded-full bg-cyan-400/10 border border-cyan-400/25 hover:border-cyan-300/50 pl-7 pr-6 py-1 text-[11px] text-cyan-100 outline-none cursor-pointer">
+        {CREW_ROLES.map(x => <option key={x.id} value={x.id} className="bg-slate-900">{x.label}</option>)}
+      </select>
+      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cyan-300/70 text-[9px] pointer-events-none" aria-hidden>▾</span>
+    </span>
   );
 }

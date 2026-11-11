@@ -243,6 +243,36 @@ async function main() {
   await as(ana);
   ok((await q(`select * from public.player_statistics where player_id = $1`, [ana])).length === 1, 'private player still sees own stats');
 
+  // ── Crew roles ──
+  console.log('[crew roles]');
+  {
+    const u1 = await signUp('cr1@example.com', { username: 'crew_lead' });
+    const u2 = await signUp('cr2@example.com', { username: 'crew_two' });
+    const u3 = await signUp('cr3@example.com', { username: 'crew_three' });
+    await as(u1);
+    await q(`select public.create_group('Crew Test', '', 'orbit-cyan', null)`);
+    ok(await fails(`select public.invite_to_group($1, 'janitor')`, [u2], /INVALID_CREW_ROLE/), 'unknown crew roles are rejected');
+    const i2 = (await q<{ i: string }>(`select public.invite_to_group($1, 'scientist') as i`, [u2]))[0].i;
+    const i3 = (await q<{ i: string }>(`select public.invite_to_group($1) as i`, [u3]))[0].i;
+    ok((await q<{ crew_role: string }>(`select crew_role from public.group_invitations where id = $1`, [i2]))[0].crew_role === 'scientist', 'invitation stores the chosen crew role');
+    await as(u2);
+    ok((await q<{ body: string }>(`select body from public.player_notifications where payload->>'invitation_id' = $1`, [i2]))[0]?.body.includes('Mission Scientist'), 'invite notification names the role');
+    await q(`select public.respond_to_invitation($1, true)`, [i2]);
+    await as(u3);
+    await q(`select public.respond_to_invitation($1, true)`, [i3]);
+    const roles = await q<{ player_id: string; crew_role: string }>(`select player_id, crew_role from public.group_members where player_id = any($1)`, [[u2, u3]]);
+    ok(roles.find(r => r.player_id === u2)?.crew_role === 'scientist' && roles.find(r => r.player_id === u3)?.crew_role === 'engineer', 'accepted members get the offered role (default Space Engineer)');
+    ok(await fails(`select public.set_crew_role($1, 'navigator')`, [u2], /NOT_GROUP_LEADER/), "members can't change someone else's role");
+    await q(`select public.set_crew_role($1, 'comms')`, [u3]);
+    ok((await q<{ crew_role: string }>(`select crew_role from public.group_members where player_id = $1`, [u3]))[0].crew_role === 'comms', 'members can change their own role');
+    await as(u1);
+    await q(`select public.set_crew_role($1, 'navigator')`, [u2]);
+    ok((await q<{ crew_role: string }>(`select crew_role from public.group_members where player_id = $1`, [u2]))[0].crew_role === 'navigator', 'leader can reassign roles');
+    await as(u2);
+    ok((await q(`select 1 from public.player_notifications where kind = 'crew_role'`)).length === 1, 'reassigned member is notified');
+    ok(await fails(`update public.group_members set crew_role = 'engineer' where player_id = $1`, [u2], /permission denied/), 'crew roles cannot be written directly');
+  }
+
   // ── Profile recovery ──
   console.log('[profile recovery]');
   const orphan = await signUp('orphan@example.com', { username: 'orphan_pilot', display_name: 'Orphan Pilot' });
