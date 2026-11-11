@@ -596,7 +596,7 @@ export const HeroOrbitalVisual: React.FC<HeroOrbitalVisualProps> = ({
       {/* Bottom Left: Provenance Sources Badge */}
       <div className="absolute bottom-2 left-2 px-2.5 py-1 rounded-full bg-slate-950/60 border border-white/10 font-mono text-[9px] text-emerald-400 backdrop-blur-sm pointer-events-none flex items-center space-x-1.5">
         <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-        <span>CELESTRAK / NASA / USGS / ESA</span>
+        <span>LIVE ORBITAL DATA</span>
       </div>
 
       {/* Detailed Spacecraft Telemetry Modal */}

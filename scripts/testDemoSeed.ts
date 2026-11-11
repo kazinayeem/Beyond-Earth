@@ -22,6 +22,15 @@ async function main() {
     (select count(distinct player_code) from public.profiles)::int codes`);
   ok(c.users === 300 && c.profiles === 300, `300 demo users with profiles (${c.users}/${c.profiles})`);
   ok(c.codes === 301, 'every player ID unique');
+  const nm = await one<{ bad: number; dup: number; labels: number }>(`select
+    count(*) filter (where p.username !~ '^[a-z]+_[a-z]+[0-9]{2,4}$' or p.display_name !~ '^[A-Z][a-z]+ [A-Z][a-z]+$')::int bad,
+    (select count(*) - count(distinct lower(username)) from public.profiles)::int dup,
+    count(*) filter (where p.bio ilike '%demo%' or p.bio ilike '%seed%')::int labels
+    from public.profiles p join auth.users u on u.id=p.id where u.raw_app_meta_data->>'demo'='true'`);
+  ok(nm.bad === 0 && nm.dup === 0, 'demo pilots have Bangladeshi-style names and unique usernames');
+  ok(nm.labels === 0 && (await one<{ n: number }>(`select count(*)::int n from public.groups where description ilike '%demo%'`)).n === 0, 'no visible demo labels on profiles or squads');
+  const realOk = await one<{ username: string }>(`select username from public.profiles p join auth.users u on u.id=p.id where u.email='real@player.dev'`);
+  ok(realOk.username === 'real_one', 'real player untouched');
   const g = await one<{ n: number; too_big: number; too_small: number }>(`select count(*)::int n,
     count(*) filter (where (select count(*) from public.group_members m where m.group_id=g.id) > 3)::int too_big,
     count(*) filter (where (select count(*) from public.group_members m where m.group_id=g.id) < 2)::int too_small from public.groups g`);

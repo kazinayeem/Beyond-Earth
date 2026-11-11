@@ -8,6 +8,7 @@ import type { ScreenState } from '@/types/game';
 import { useGameStore } from '@/store/gameStore';
 import { StarfieldCanvas } from '@/components/canvas/StarfieldCanvas';
 import { GalaxyBackground } from '@/components/canvas/GalaxyBackground';
+import { PlanetBackdrop } from '@/components/canvas/PlanetBackdrop';
 import { TopNavHeader } from '@/components/ui/TopNavHeader';
 import { TitleScreen } from '@/components/screens/TitleScreen';
 import { MissionSelectScreen } from '@/components/screens/MissionSelectScreen';
@@ -27,6 +28,7 @@ import { SettingsModal } from '@/components/modals/SettingsModal';
 export default function GameMainPage() {
   const screen = useGameStore(s => s.screen);
   const reducedMotion = useGameStore(s => s.reducedMotion);
+  const activeTarget = useGameStore(s => s.activeMission.target);
 
   const [isTutorialOpen, setIsTutorialOpen] = useState(false);
   const [isLeaderboardOpen, setIsLeaderboardOpen] = useState(false);
@@ -113,8 +115,11 @@ export default function GameMainPage() {
       {/* Deep-space environment: animated galaxy on the home page, light starfield elsewhere */}
       {screen === 'title' ? (
         <GalaxyBackground reducedMotion={reducedMotion} />
-      ) : (
+      ) : screen === 'launch' || screen === 'mission_control' ? (
         <StarfieldCanvas density={120} speed={0.15} />
+      ) : (
+        // Mission screens show the selected destination: Moon, Mars, asteroid or Earth
+        <PlanetBackdrop target={activeTarget} reducedMotion={reducedMotion} />
       )}
 
       {/* Persistent Flight Director Navigation Bar */}

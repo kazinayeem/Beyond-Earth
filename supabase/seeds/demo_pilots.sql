@@ -10,7 +10,9 @@
 --     domain), tagged raw_app_meta_data.demo = true;
 --   • has NO usable password (encrypted_password is empty), so nobody can sign in as it;
 --   • gets its profile and MC-XXXXXX player ID from the normal signup trigger;
---   • has the bio "Demo pilot (seed data)".
+--   • gets a random Bangladeshi name and a matching unique username.
+-- Demo pilots and squads are identified by that app_metadata flag (not by any
+-- visible label), which is what demo_cleanup.sql uses.
 -- Results use the same scoring and reward formula as public.complete_mission().
 --
 -- Safe to re-run: existing demo pilots are kept, and squads and history are only
@@ -22,19 +24,13 @@
 do $$
 declare
   target  constant integer := 2000;
-  firsts  text[] := array['ava','leo','mia','noah','zara','kai','ivy','omar','luna','ezra','nina','ravi','sara','theo','yuki','amir','lena','jonas','maya','arjun','chen','ines','tariq','elif','diego','hana','felix','nadia','samir','olga','kofi','aisha','mateo','sofia','ibrahim','priya','lucas','emma','fatima','hugo'];
-  lasts   text[] := array['reyes','okafor','brandt','mehta','tanaka','silva','novak','haddad','larsen','kim','rahman','costa','ivanova','mensah','dubois','ozturk','park','nair','fischer','santos','ali','moreau','hossain','kowalski','garcia','chowdhury','yilmaz','nguyen','popescu','adeyemi'];
   i       integer;
-  f       text;
-  l       text;
   mail    text;
   created integer := 0;
 begin
   for i in 1..target loop
     mail := format('demo-pilot-%s@example.com', lpad(i::text, 4, '0'));
     continue when exists (select 1 from auth.users u where u.email = mail);
-    f := firsts[1 + floor(random() * array_length(firsts, 1))::int];
-    l := lasts[1 + floor(random() * array_length(lasts, 1))::int];
     insert into auth.users (
       instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
       raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -42,7 +38,7 @@ begin
     ) values (
       '00000000-0000-0000-0000-000000000000', gen_random_uuid(), 'authenticated', 'authenticated', mail, '', now(),
       jsonb_build_object('provider', 'email', 'providers', jsonb_build_array('email'), 'demo', true),
-      jsonb_build_object('username', left(f || '_' || l, 15) || '_' || lpad(i::text, 4, '0'), 'display_name', initcap(f) || ' ' || initcap(l)),
+      '{}'::jsonb,
       now() - random() * interval '120 days', now(),
       '', '', '', ''
     );
@@ -52,13 +48,46 @@ begin
 end;
 $$;
 
--- 2. Profile cosmetics
-update public.profiles p
-   set avatar = (array['orbit','nova','comet','ring','rocket','planet','star','moon'])[1 + floor(random() * 8)::int]
-             || '-' || (array['cyan','violet','amber','emerald','rose','sky'])[1 + floor(random() * 6)::int],
-       bio = 'Demo pilot (seed data)'
-  from auth.users u
- where u.id = p.id and u.raw_app_meta_data ->> 'demo' = 'true' and p.bio is distinct from 'Demo pilot (seed data)';
+-- 2. Bangladeshi names, unique usernames and avatars (once per pilot, tracked by app_metadata.named)
+do $$
+declare
+  firsts text[] := array['tanvir','sakib','nusrat','farhana','tasnim','arif','rafiq','shakil','mahmud','sumaiya','jannat','mim','riya','fahim','imran','nafisa','tahmid','ayesha','sadia','rakib','shuvo','anika','mehedi','zubair','ishrat','raihan','sabbir','tamanna','nabila','hasan','rashed','sharmin','tasfia','ahnaf','labib','tahsin','muntasir','afsana','rifat','nayeem','shanto','mithila','rubel','sohel','jahid','lamia','sanjida','tonmoy','arnob','orpita','pritom','sourav','ananya','rupom','emon','faria','mahin','raisa','siam','tanha'];
+  lasts  text[] := array['hossain','rahman','ahmed','islam','chowdhury','khan','uddin','alam','sarker','haque','miah','akter','talukder','bhuiyan','siddique','kabir','mahmud','karim','hasan','mridha','sheikh','biswas','das','roy','saha','mondal','molla','sultana','parvez','jaman'];
+  rec    record;
+  f      text;
+  l      text;
+  uname  text;
+  tries  integer;
+  named  integer := 0;
+begin
+  alter table public.profiles disable trigger profiles_protect;  -- usernames are normally immutable
+  for rec in
+    select p.id from public.profiles p join auth.users u on u.id = p.id
+     where u.raw_app_meta_data ->> 'demo' = 'true' and coalesce(u.raw_app_meta_data ->> 'named', '') = ''
+  loop
+    f := firsts[1 + floor(random() * array_length(firsts, 1))::int];
+    l := lasts[1 + floor(random() * array_length(lasts, 1))::int];
+    tries := 0;
+    loop
+      tries := tries + 1;
+      uname := left(f || '_' || l, 16) || (10 + floor(random() * (case when tries < 5 then 90 else 9990 end)))::int;
+      exit when not exists (select 1 from public.profiles x where lower(x.username) = uname and x.id <> rec.id);
+    end loop;
+    update public.profiles
+       set username = uname, display_name = initcap(f) || ' ' || initcap(l), bio = null,
+           avatar = (array['orbit','nova','comet','ring','rocket','planet','star','moon'])[1 + floor(random() * 8)::int]
+                    || '-' || (array['cyan','violet','amber','emerald','rose','sky'])[1 + floor(random() * 6)::int]
+     where id = rec.id;
+    update auth.users
+       set raw_app_meta_data = raw_app_meta_data || '{"named": true}'::jsonb,
+           raw_user_meta_data = jsonb_build_object('username', uname, 'display_name', initcap(f) || ' ' || initcap(l))
+     where id = rec.id;
+    named := named + 1;
+  end loop;
+  alter table public.profiles enable trigger profiles_protect;
+  raise notice 'demo pilots named: %', named;
+end;
+$$;
 
 -- 3. Squads of 2–3 for about 40% of demo pilots not yet processed (and not already in a squad)
 do $$
@@ -93,7 +122,7 @@ begin
       since := now() - (30 + random() * 90) * interval '1 day';
       insert into public.groups (group_code, name, description, emblem, specialization, owner_id, created_at)
       values ('GRP-' || upper(left(a, 2) || left(b, 1)) || '-' || private.random_code(4), left(a || ' ' || b, 32),
-              'Demo squad (seed data).',
+              (array['Exploring the solar system together.','Lunar and Mars mission crew.','We fly, we learn, we land.','Science first, always.','Chasing asteroids since day one.','Mission planners from Bangladesh.'])[1 + floor(random() * 6)::int],
               (array['orbit','nova','comet','ring','rocket','planet','star','moon'])[1 + floor(random() * 8)::int]
                 || '-' || (array['cyan','violet','amber','emerald','rose','sky'])[1 + floor(random() * 6)::int],
               case when random() < 0.85 then specs[1 + floor(random() * 5)::int] end, crew[1], since)
@@ -208,7 +237,13 @@ update public.groups g
      where r.group_id is not null
      group by r.group_id
   ) a
- where g.id = a.group_id and g.description = 'Demo squad (seed data).';
+ where g.id = a.group_id
+   and exists (select 1 from auth.users u where u.id = g.owner_id and u.raw_app_meta_data ->> 'demo' = 'true');
+
+-- Squads created by earlier versions of this seed carried a visible demo label
+update public.groups g
+   set description = (array['Exploring the solar system together.','Lunar and Mars mission crew.','We fly, we learn, we land.','Science first, always.','Chasing asteroids since day one.','Mission planners from Bangladesh.'])[1 + floor(random() * 6)::int]
+ where g.description = 'Demo squad (seed data).';
 
 insert into public.player_achievements (player_id, achievement_id, unlocked_at)
 select x.player_id, x.achievement_id, min(x.at)
