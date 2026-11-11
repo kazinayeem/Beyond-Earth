@@ -3,7 +3,7 @@ import { getNotifications, getSquadDashboard } from '@/lib/network/queries';
 import { NotificationsList } from '@/components/network/NotificationsList';
 import { PageHeader } from '@/components/network/ui';
 
-export const metadata = { title: 'Notifications · Mission Control' };
+export const metadata = { title: 'Notifications', robots: { index: false, follow: false } };
 
 export default async function NotificationsPage() {
   const squad = await getSquadDashboard();

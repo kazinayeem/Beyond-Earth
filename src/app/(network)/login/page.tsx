@@ -4,7 +4,7 @@ import { LoginForm } from '@/components/network/AuthForms';
 import { isGoogleEnabled } from '@/lib/network/authSettings';
 import { safeNext } from '@/lib/network/safeNext';
 
-export const metadata = { title: 'Sign in · Mission Control' };
+export const metadata = { title: 'Log in', description: 'Log in to Mission Control to fly missions, earn credits and join a squad.' };
 
 const BANNERS: Record<string, string> = {
   mission: 'Sign in to fly missions — results are verified and saved to your pilot record.',

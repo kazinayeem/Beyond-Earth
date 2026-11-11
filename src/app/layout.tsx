@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Inter, Roboto_Mono, Exo_2 } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/network/AuthProvider';
@@ -18,16 +18,47 @@ const exo = Exo_2({
   subsets: ['latin'],
 });
 
-export const viewport = {
+const SITE_URL = 'https://beyond-earth-xi.vercel.app';
+const SITE_NAME = 'Mission Control: Beyond Earth';
+const DESCRIPTION =
+  'Plan real space missions to the Moon, Mars, an asteroid and Earth orbit. Build your spacecraft, fly a realistic 3D launch, team up in squads of three and climb the leaderboard.';
+
+export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   themeColor: '#03060f',
+  colorScheme: 'dark',
 };
 
 export const metadata: Metadata = {
-  title: 'Mission Control: Beyond Earth | NASA Space Mission Strategy & Simulation',
-  description: 'Design, launch, manage, and complete realistic space exploration missions. Balance mass, power, budget, risk, and unexpected deep-space anomalies.',
-  keywords: ['NASA', 'space exploration', 'simulation game', 'mission control', 'aerospace engineering', 'lunar explorer'],
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: `${SITE_NAME} | Space Mission Simulator`,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: ['space mission simulator', 'space game', 'rocket launch simulation', 'mission control', 'Moon mission', 'Mars mission', 'asteroid mission', 'spacecraft builder', 'STEM education', 'multiplayer squads'],
+  category: 'education',
+  alternates: { canonical: '/' },
+  manifest: '/manifest.webmanifest',
+  // icon.png, apple-icon.png, favicon.ico and the social images come from files in src/app/
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: `${SITE_NAME} | Space Mission Simulator`,
+    description: DESCRIPTION,
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: `${SITE_NAME} | Space Mission Simulator`,
+    description: DESCRIPTION,
+  },
+  appleWebApp: { capable: true, title: 'Mission Control', statusBarStyle: 'black-translucent' },
+  formatDetection: { telephone: false },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { AuthFrame } from '@/components/network/AuthFrame';
 import { ForgotForm } from '@/components/network/AuthForms';
 
-export const metadata = { title: 'Reset password · Mission Control' };
+export const metadata = { title: 'Reset password', robots: { index: false, follow: false } };
 
 export default function ForgotPasswordPage() {
   return (

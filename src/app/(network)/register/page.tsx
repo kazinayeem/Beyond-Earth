@@ -3,7 +3,7 @@ import { AuthFrame } from '@/components/network/AuthFrame';
 import { RegisterForm } from '@/components/network/AuthForms';
 import { isGoogleEnabled } from '@/lib/network/authSettings';
 
-export const metadata = { title: 'Create account · Mission Control' };
+export const metadata = { title: 'Create account', description: 'Create a free pilot account, get your permanent MC player ID and start flying missions.' };
 
 export default async function RegisterPage() {
   return (

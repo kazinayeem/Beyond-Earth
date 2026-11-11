@@ -3,7 +3,7 @@ import { AuthFrame } from '@/components/network/AuthFrame';
 import { ResetForm } from '@/components/network/AuthForms';
 import { getVerifiedUserId } from '@/lib/supabase/server';
 
-export const metadata = { title: 'New password · Mission Control' };
+export const metadata = { title: 'New password', robots: { index: false, follow: false } };
 
 export default async function ResetPasswordPage() {
   // The recovery link signs the user in with a short-lived session

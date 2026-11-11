@@ -5,7 +5,7 @@ import { PlayerAvatar } from '@/components/network/PlayerAvatar';
 import { PageHeader, EmptyState } from '@/components/network/ui';
 import { DbNotReady } from '@/components/network/DbNotReady';
 
-export const metadata = { title: 'Leaderboard · Mission Control' };
+export const metadata = { title: 'Leaderboard', description: 'Top pilots and squads by experience, science, missions and credits: all time, last 30 days and last 7 days.' };
 
 const CATS = [
   { id: 'xp', label: 'Experience', unit: 'XP' },

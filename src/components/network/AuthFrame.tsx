@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 /** Two-column cinematic frame for auth screens. */
 export function AuthFrame({ eyebrow, title, subtitle, children, footer }: {
@@ -8,7 +9,8 @@ export function AuthFrame({ eyebrow, title, subtitle, children, footer }: {
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-8 sm:py-14 grid lg:grid-cols-[1.05fr_1fr] gap-10 items-center">
       <div className="hidden lg:block">
-        <div className="auth-planet" aria-hidden />
+        <Image src="/brand/logo-768.jpg" alt="Mission Control: Beyond the Earth" width={768} height={512} priority
+          className="w-full max-w-[480px] h-auto rounded-3xl ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(56,189,248,0.45)]" />
         <div className="hud-label text-cyan-300/80 mt-8">Mission Control network</div>
         <p className="font-display text-4xl font-semibold leading-tight text-white mt-2">
           One permanent pilot ID.<br />Three-person squads.<br /><span className="text-cyan-200">Every result verified.</span>

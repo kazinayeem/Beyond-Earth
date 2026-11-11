@@ -6,7 +6,7 @@ import { ProfileEditor } from '@/components/network/ProfileEditor';
 import { Notice } from '@/components/network/ui';
 import { DbNotReady } from '@/components/network/DbNotReady';
 
-export const metadata = { title: 'My profile · Mission Control' };
+export const metadata = { title: 'My profile', robots: { index: false, follow: false } };
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const uid = await getVerifiedUserIdSafe();

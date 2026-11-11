@@ -6,7 +6,7 @@ import { PlayerAvatar } from '@/components/network/PlayerAvatar';
 import { DbNotReady } from '@/components/network/DbNotReady';
 import { PageHeader } from '@/components/network/ui';
 
-export const metadata = { title: 'My squad · Mission Control' };
+export const metadata = { title: 'Squads', description: 'Form a squad of up to three pilots, assign crew roles and fly missions together.' };
 
 export default async function SquadPage() {
   const d = await getSquadDashboard();

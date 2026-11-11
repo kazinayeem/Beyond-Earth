@@ -2,7 +2,7 @@ import { getMe } from '@/lib/network/queries';
 import { PageHeader } from '@/components/network/ui';
 import { PlayerSearch } from '@/components/network/PlayerSearch';
 
-export const metadata = { title: 'Find players · Mission Control' };
+export const metadata = { title: 'Find players', description: 'Search pilots by player ID, username or name, see their stats and invite them to your squad.' };
 
 export default async function PlayersPage() {
   const me = await getMe();

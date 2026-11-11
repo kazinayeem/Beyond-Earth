@@ -2,11 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import { useGameStore } from '@/store/gameStore';
 import { ScreenState } from '@/types/game';
 import {
-  Volume2, VolumeX, Bell, Sliders, Compass, Menu, X, LogOut, User, Users, Trophy, Award, Database,
+  Volume2, VolumeX, Bell, Sliders, Menu, X, LogOut, User, Users, Trophy, Award, Database,
   ShieldCheck, HelpCircle, Search, Home, Rocket, ChevronDown,
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
@@ -78,9 +79,8 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <Link href="/" onClick={goGame('title')} className="flex items-center gap-2.5 shrink-0" aria-label="Mission Control home">
-            <span className="w-8 h-8 rounded-lg bg-gradient-to-tr from-cyan-600 via-blue-600 to-indigo-600 flex items-center justify-center">
-              <Compass className="w-5 h-5 text-white" />
-            </span>
+            <Image src="/brand/mark-192.png" alt="" width={34} height={34} priority
+              className="w-[34px] h-[34px] rounded-lg ring-1 ring-white/15 shadow-[0_0_14px_rgba(56,189,248,0.25)]" />
             <span className="hidden sm:block">
               <span className="block text-xs font-black tracking-widest text-white font-mono">MISSION CONTROL</span>
               <span className="block text-[10px] font-mono text-cyan-400/80">BEYOND EARTH</span>
