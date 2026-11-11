@@ -40,7 +40,6 @@ export const metadata: Metadata = {
   applicationName: SITE_NAME,
   keywords: ['space mission simulator', 'space game', 'rocket launch simulation', 'mission control', 'Moon mission', 'Mars mission', 'asteroid mission', 'spacecraft builder', 'STEM education', 'multiplayer squads'],
   category: 'education',
-  alternates: { canonical: '/' },
   manifest: '/manifest.webmanifest',
   // icon.png, apple-icon.png, favicon.ico and the social images come from files in src/app/
   openGraph: {
