@@ -41,7 +41,8 @@ export interface Group {
   missions_completed: number;
   created_at: string;
 }
-export interface Member { player_id: string; role: 'leader' | 'member'; crew_role: string; joined_at: string; profile: Profile; stats: Stats | null }
+export interface Member { player_id: string; role: 'leader' | 'member'; crew_role: string; crew_roles: string[]; joined_at: string; profile: Profile; stats: Stats | null }
+export interface SquadGameSummary { id: string; mission_id: string; status: 'active' | 'completed' | 'abandoned'; stage: string | null; created_at: string }
 export interface MissionResultRow {
   id: string; mission_id: string; status: 'SUCCESS' | 'PARTIAL' | 'FAILURE'; science: number; score: number;
   credits_awarded: number; xp_awarded: number; squad_bonus: number; completed_at: string; group_id: string | null; group_mission_id: string | null; player_id: string;
@@ -139,15 +140,16 @@ export async function getSquadDashboard() {
 
   if (!membership) return { uid, group: null, receivedInvites } as const;
   const gid = membership.group_id as string;
-  const [{ data: group }, { data: members }, { data: sent }, { data: missions }, { data: results }, { data: board }] = await Promise.all([
+  const [{ data: group }, { data: members }, { data: sent }, { data: missions }, { data: results }, { data: board }, { data: games }] = await Promise.all([
     supabase.from('groups').select('*').eq('id', gid).single(),
-    supabase.from('group_members').select('player_id, role, crew_role, joined_at, profile:profiles(*)').eq('group_id', gid).order('joined_at'),
+    supabase.from('group_members').select('player_id, role, crew_role, crew_roles, joined_at, profile:profiles(*)').eq('group_id', gid).order('joined_at'),
     supabase.from('group_invitations')
       .select('id, status, created_at, expires_at, crew_role, invitee:profiles!group_invitations_invitee_id_fkey(id, display_name, player_code, avatar)')
       .eq('group_id', gid).eq('status', 'pending').order('created_at', { ascending: false }),
     supabase.from('group_missions').select('id, mission_id, status, created_at, closes_at, created_by').eq('group_id', gid).order('created_at', { ascending: false }).limit(8),
     supabase.from('mission_results').select('*').eq('group_id', gid).order('completed_at', { ascending: false }).limit(15),
     supabase.rpc('get_group_leaderboard', { p_period: 'all', p_limit: 1 }),
+    supabase.from('squad_games').select('id, mission_id, status, created_at, stage:state->>stage').eq('group_id', gid).order('created_at', { ascending: false }).limit(12),
   ]);
   const memberIds = (members ?? []).map(m => m.player_id as string);
   const { data: memberStats } = await supabase.from('player_statistics').select('*').in('player_id', memberIds.length ? memberIds : ['00000000-0000-0000-0000-000000000000']);
@@ -156,12 +158,13 @@ export async function getSquadDashboard() {
   return {
     uid,
     group: group as Group,
-    members: (members ?? []).map(m => ({ ...m, profile: one(m.profile) as Profile, stats: statsBy.get(m.player_id as string) ?? null })) as Member[],
+    members: (members ?? []).map(m => ({ ...m, crew_roles: (m.crew_roles ?? []) as string[], profile: one(m.profile) as Profile, stats: statsBy.get(m.player_id as string) ?? null })) as Member[],
     sentInvites: ((sent ?? []) as unknown as InvitationRow[]).map(r => ({ ...r, invitee: one(r.invitee) })),
     receivedInvites,
     missions: (missions ?? []) as { id: string; mission_id: string; status: string; created_at: string; closes_at: string; created_by: string }[],
     results: (results ?? []) as MissionResultRow[],
     leaderboardRank: myRow?.rank ?? null,
+    games: (games ?? []) as unknown as SquadGameSummary[],
   } as const;
 }
 

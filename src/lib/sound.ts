@@ -1287,6 +1287,30 @@ class SoundEngine {
     });
   }
 
+  /** Rolling thunder (distance 0 = overhead crack, 1 = far rumble). */
+  public playThunder(distance = 0.5): void {
+    this.play((ctx, bus) => {
+      const d = Math.min(1, Math.max(0, distance));
+      this.noiseHit(ctx, { kind: 'white', attack: 0.004, decay: 0.25 + d * 0.4, peak: 0.16 * (1 - d * 0.6), dest: bus.env,
+        filter: { type: 'bandpass', freq: 2400, freqEnd: 500, Q: 0.8, sweep: 0.3 } });
+      this.noiseHit(ctx, { kind: 'brown', attack: 0.05 + d * 0.15, hold: 0.3 + d * 0.5, decay: 1.6 + d * 1.6, peak: 0.32, dest: bus.env,
+        filter: { type: 'lowpass', freq: 520, freqEnd: 45, Q: 1, sweep: 2.2 } });
+    });
+  }
+
+  /** Vehicle loss: blast, shockwave and falling debris. */
+  public playExplosion(): void {
+    this.play((ctx, bus) => {
+      this.noiseHit(ctx, { kind: 'white', attack: 0.002, decay: 0.5, peak: 0.45, dest: bus.env,
+        filter: { type: 'lowpass', freq: 5000, freqEnd: 300, Q: 0.7, sweep: 0.5 } });
+      this.noiseHit(ctx, { kind: 'brown', attack: 0.01, hold: 0.4, decay: 2.4, peak: 0.6, dest: bus.env,
+        filter: { type: 'lowpass', freq: 700, freqEnd: 40, Q: 1, sweep: 2.4 } });
+      this.noiseHit(ctx, { kind: 'crackle', attack: 0.2, hold: 0.6, decay: 1.8, peak: 0.12, dest: bus.env,
+        filter: { type: 'highpass', freq: 1500, Q: 0.7 } });
+      this.tone(ctx, { freq: 48, attack: 0.01, hold: 0.3, decay: 1.4, peak: 0.25, dest: bus.env });
+    });
+  }
+
   /** Fades out and fully disposes the launch graph (idempotent). */
   public stopLaunchAudio(fade = 0.5): void {
     this.wantLaunch = false;

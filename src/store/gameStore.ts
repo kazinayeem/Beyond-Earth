@@ -14,7 +14,7 @@ import {
   MissionPhase 
 } from '@/types/game';
 import { MISSIONS } from '@/data/missions';
-import { SPACECRAFT_COMPONENTS, SYNERGY_BONUSES } from '@/data/components';
+import { SPACECRAFT_COMPONENTS, SYNERGY_BONUSES, DEFAULT_BUILD_IDS } from '@/data/components';
 import { LAUNCH_VEHICLES } from '@/data/launchers';
 import { TRAJECTORY_PROFILES } from '@/data/trajectories';
 import { MISSION_EVENTS } from '@/data/events';
@@ -22,6 +22,10 @@ import { INITIAL_ACHIEVEMENTS } from '@/data/achievements';
 import { sounds } from '@/lib/sound';
 import { startMissionRunAction, completeMissionRunAction, type VerifiedMissionResult } from '@/app/actions/network';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
+import type { SquadCtx, SquadGameRow, SquadGameState, SquadSim } from '@/lib/squad/types';
+import { squadAct, squadClaim } from '@/lib/squad/client';
+import { OPS, componentOwnerRole } from '@/lib/squad/permissions';
+import { crewRole } from '@/lib/network/crewRoles';
 
 export type OnlineResultState =
   | { state: 'idle' }
@@ -117,12 +121,32 @@ interface GameState {
   activeEvent: MissionEvent | null;
   resolvedEventIds: string[];
   decisionLog: MissionDecisionRecord[];
-  resolveEventOption: (event: MissionEvent, optionIndex: number) => void;
+  resolveEventOption: (event: MissionEvent, optionIndex: number, internal?: boolean) => void;
   triggerEventById: (eventId: string) => void;
   
   // Simulation Loop Tick
   tickSimulation: (deltaSeconds: number) => void;
   initMissionSimulation: () => void;
+
+  // Squad mission room (null in solo play)
+  squad: SquadCtx | null;
+  squadRemote: SquadGameState | null;
+  squadVersion: number;
+  squadStatus: SquadGameRow['status'] | null;
+  squadNotice: string | null;
+  squadAck: number;
+  setSquadNotice: (msg: string | null) => void;
+  enterSquad: (ctx: SquadCtx, row: SquadGameRow) => void;
+  leaveSquad: () => void;
+  applyRemoteSquad: (row: Pick<SquadGameRow, 'state' | 'version' | 'status'>) => void;
+  squadDo: (action: string, payload?: Record<string, unknown>, opts?: { silent?: boolean }) => Promise<boolean>;
+  pushSquadSim: () => Promise<void>;
+
+  // Launch-day environment (live weather / NASA space weather)
+  externalRiskPts: number;
+  launchFailureReason: string | null;
+  launchWeatherNote: string | null;
+  setLaunchEnvironment: (env: { externalRiskPts?: number; failureReason?: string | null; note?: string | null }) => void;
 
   // Debrief & Completion
   debriefResult: MissionDebriefResult | null;
@@ -138,6 +162,13 @@ interface GameState {
   startOnlineRun: () => Promise<void>;
   submitOnlineResult: () => Promise<void>;
 }
+
+const SQUAD_STAGE_SCREEN: Record<string, ScreenState> = {
+  briefing: 'briefing', builder: 'builder', launcher_trajectory: 'launcher_trajectory',
+  launch: 'launch', mission_control: 'mission_control', debrief: 'debrief',
+};
+const clampN = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+let squadPushing = false;
 
 // Helper to compute stats
 function calculateStats(
@@ -243,17 +274,7 @@ function calculateStats(
 const initialMission = MISSIONS[0];
 const initialLauncher = 'launch-medium';
 const initialTrajectory = 'hohmann';
-const defaultComponentIds = [
-  'struct-light',
-  'cam-hires',
-  'inst-spectrometer',
-  'pwr-solar-adv',
-  'pwr-battery-std',
-  'comm-high-gain',
-  'prop-medium',
-  'therm-blanket',
-  'nav-imu'
-];
+const defaultComponentIds = DEFAULT_BUILD_IDS;
 
 export const useGameStore = create<GameState>((set, get) => {
   // Read persisted data if in browser
@@ -318,6 +339,18 @@ export const useGameStore = create<GameState>((set, get) => {
     previousScreen: null,
     setScreen: (screen) => {
       const current = get().screen;
+      const sq = get().squad;
+      if (sq) {
+        // Squad mission rooms: stage changes are role actions, never free navigation.
+        const stage = get().squadRemote?.stage;
+        const state = get();
+        if (screen === 'data_explorer' || screen === 'data_sources') { set({ screen, previousScreen: current }); return; }
+        if (stage === 'briefing' && screen === 'builder') { void get().squadDo('briefing.approve'); return; }
+        if (stage === 'builder' && screen === 'launcher_trajectory') { void get().squadDo('build.finalize', { valid: state.canLaunch, costM: state.totalCostM }); return; }
+        if (stage === 'launcher_trajectory' && screen === 'launch') { void get().squadDo('launch.authorize', { valid: state.canLaunch, costM: state.totalCostM }); return; }
+        if (stage && SQUAD_STAGE_SCREEN[stage] && current !== SQUAD_STAGE_SCREEN[stage]) set({ screen: SQUAD_STAGE_SCREEN[stage] });
+        return;
+      }
       sounds.playClick();
       set({ screen, previousScreen: current });
     },
@@ -375,6 +408,19 @@ export const useGameStore = create<GameState>((set, get) => {
 
     selectedComponentIds: defaultComponentIds,
     toggleComponent: (componentId: string) => {
+      const sq = get().squad;
+      if (sq) {
+        const owner = componentOwnerRole(componentId);
+        if (owner && !sq.myRoles.includes(owner)) {
+          const who = sq.members.filter(m => m.effective.includes(owner)).map(m => m.name).join(', ');
+          get().setSquadNotice(`Not your job — ${crewRole(owner)?.label ?? owner} installs this module${who ? ` (${who})` : ''}.`);
+          sounds.playWarning();
+          return;
+        }
+        sounds.playClick();
+        void get().squadDo('build.toggle', { componentId, on: !get().selectedComponentIds.includes(componentId) });
+        return;
+      }
       sounds.playClick();
       const current = get().selectedComponentIds;
       let next: string[];
@@ -394,6 +440,7 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     clearComponents: () => {
+      if (get().squad) { get().setSquadNotice('Presets are disabled in squad missions — each specialist installs their own modules.'); return; }
       sounds.playClick();
       const next: string[] = [];
       const stats = calculateStats(next, get().activeMission, get().selectedLauncherId, get().selectedTrajectoryId);
@@ -401,6 +448,7 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     loadRecommendedBuild: () => {
+      if (get().squad) { get().setSquadNotice('Presets are disabled in squad missions — each specialist installs their own modules.'); return; }
       sounds.playToggle();
       const next = [
         'struct-light',
@@ -419,6 +467,7 @@ export const useGameStore = create<GameState>((set, get) => {
     },
 
     loadLroBuild: () => {
+      if (get().squad) { get().setSquadNotice('Presets are disabled in squad missions — each specialist installs their own modules.'); return; }
       sounds.playToggle();
       const next = [
         'struct-light',
@@ -439,6 +488,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
     selectedLauncherId: initialLauncher,
     setLauncherId: (id: string) => {
+      if (get().squad) { void get().squadDo('build.launcher', { id }); return; }
       sounds.playToggle();
       const stats = calculateStats(get().selectedComponentIds, get().activeMission, id, get().selectedTrajectoryId);
       set({ selectedLauncherId: id, ...stats });
@@ -446,6 +496,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
     selectedTrajectoryId: initialTrajectory,
     setTrajectoryId: (id: 'direct' | 'hohmann' | 'fast') => {
+      if (get().squad) { void get().squadDo('plan.trajectory', { id }); return; }
       sounds.playToggle();
       const stats = calculateStats(get().selectedComponentIds, get().activeMission, get().selectedLauncherId, id);
       set({ selectedTrajectoryId: id, ...stats });
@@ -471,6 +522,8 @@ export const useGameStore = create<GameState>((set, get) => {
     missionProgress: 0,
     simSpeed: 1,
     setSimSpeed: (simSpeed) => {
+      const sq = get().squad;
+      if (sq && !sq.isHost) { get().setSquadNotice(`Only the Flight Director (${sq.hostName}) controls simulation speed.`); return; }
       sounds.playClick();
       set({ simSpeed });
     },
@@ -488,6 +541,15 @@ export const useGameStore = create<GameState>((set, get) => {
     resolvedEventIds: [],
     decisionLog: [],
 
+    externalRiskPts: 0,
+    launchFailureReason: null,
+    launchWeatherNote: null,
+    setLaunchEnvironment: (env) => set(s => ({
+      externalRiskPts: env.externalRiskPts ?? s.externalRiskPts,
+      launchFailureReason: env.failureReason === undefined ? s.launchFailureReason : env.failureReason,
+      launchWeatherNote: env.note === undefined ? s.launchWeatherNote : env.note,
+    })),
+
     initMissionSimulation: () => {
       const stats = calculateStats(get().selectedComponentIds, get().activeMission, get().selectedLauncherId, get().selectedTrajectoryId);
       set({
@@ -500,7 +562,7 @@ export const useGameStore = create<GameState>((set, get) => {
         currentFuelPct: stats.fuelCapacityPct,
         currentPowerW: stats.powerGeneratedW > 0 ? stats.powerGeneratedW : 250,
         currentCommPct: 98,
-        currentRiskPct: stats.calculatedRiskPct,
+        currentRiskPct: clampN(stats.calculatedRiskPct + get().externalRiskPts - (get().squad?.bonus.riskPts ?? 0), 2, 95),
         scienceCollected: 0,
         discoveriesCount: 0,
         activeEvent: null,
@@ -517,8 +579,10 @@ export const useGameStore = create<GameState>((set, get) => {
       }
     },
 
-    resolveEventOption: (event: MissionEvent, optionIndex: number) => {
+    resolveEventOption: (event: MissionEvent, optionIndex: number, internal?: boolean) => {
+      if (get().squad && !internal) { void get().squadDo('event.resolve', { eventId: event.id, optionIndex }); return; }
       const opt = event.options[optionIndex];
+      if (!opt) return;
       const state = get();
       sounds.playClick();
 
@@ -572,6 +636,12 @@ export const useGameStore = create<GameState>((set, get) => {
       const state = get();
       if (state.simSpeed === 0 || state.activeEvent !== null) return;
       if (state.missionPhase === 'MISSION_COMPLETE' || state.missionPhase === 'MISSION_FAILED') return;
+      if (state.squad && !state.squad.isHost) {
+        // Non-host consoles only interpolate between the Flight Director's snapshots.
+        const p = Math.min(99.5, state.missionProgress + 0.8 * state.simSpeed * deltaSec);
+        set({ missionProgress: p, elapsedDays: (p / 100) * state.activeMission.missionWindowDays, distanceCoveredKm: (p / 100) * state.activeMission.targetDistanceKm });
+        return;
+      }
 
       const rate = 0.8 * state.simSpeed * deltaSec;
       const nextProgress = Math.min(100, state.missionProgress + rate);
@@ -591,7 +661,7 @@ export const useGameStore = create<GameState>((set, get) => {
 
       // Incremental science accumulation
       const maxPotential = state.sciencePotential;
-      const incrementalSci = (deltaSec * state.simSpeed * 0.4 * (maxPotential / 100));
+      const incrementalSci = (deltaSec * state.simSpeed * 0.4 * (maxPotential / 100)) * (1 + (state.squad?.bonus.sciencePct ?? 0) / 100);
       const nextScience = Math.min(maxPotential * 1.5, state.scienceCollected + incrementalSci);
 
       // Slight fuel burn over time
@@ -721,7 +791,7 @@ export const useGameStore = create<GameState>((set, get) => {
       };
 
       const updatedLb = [newEntry, ...state.leaderboard].sort((a, b) => b.score - a.score).slice(0, 15);
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !state.squad) {
         localStorage.setItem('beyond_earth_leaderboard', JSON.stringify(updatedLb));
       }
 
@@ -732,7 +802,7 @@ export const useGameStore = create<GameState>((set, get) => {
       } else if (status === 'PARTIAL') {
         nextCredits += Math.round(mission.rewardCredits * 0.5);
       }
-      if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined' && !state.squad) {
         localStorage.setItem('beyond_earth_credits', String(nextCredits));
       }
 
@@ -754,8 +824,19 @@ export const useGameStore = create<GameState>((set, get) => {
         missionDurationDays: Math.round(state.elapsedDays),
         discoveriesCount: state.discoveriesCount,
         decisions: state.decisionLog,
-        achievementsUnlocked: unlockedAch
+        achievementsUnlocked: unlockedAch,
+        failureReason: status === 'FAILURE' ? (state.launchFailureReason ?? undefined) : undefined,
+        launchWeatherNote: state.launchWeatherNote ?? undefined,
       };
+
+      if (state.squad) {
+        // Squad room: the result is stored by the server for everyone; the room moves all consoles to the debrief.
+        set({ missionPhase: status === 'FAILURE' ? 'MISSION_FAILED' : 'MISSION_COMPLETE', simSpeed: 0, debriefResult: debrief });
+        const slim = { ...debrief, decisions: debrief.decisions.slice(-30) };
+        if (state.squadRemote?.stage === 'launch') void get().squadDo('launch.finish', { debrief: slim }, { silent: true });
+        else void get().squadDo('mission.finish', { status, science: debrief.scienceCollected, fuelPct: debrief.fuelRemainingPct, riskPct: debrief.riskFinalPct, cause: debrief.failureReason ?? '', debrief: slim }, { silent: true });
+        return;
+      }
 
       set({
         missionPhase: status === 'FAILURE' ? 'MISSION_FAILED' : 'MISSION_COMPLETE',
@@ -768,6 +849,152 @@ export const useGameStore = create<GameState>((set, get) => {
       void get().submitOnlineResult();
     },
 
+    squad: null,
+    squadRemote: null,
+    squadVersion: 0,
+    squadStatus: null,
+    squadNotice: null,
+    squadAck: 0,
+    setSquadNotice: (msg) => set({ squadNotice: msg }),
+
+    enterSquad: (ctx, row) => {
+      const base = MISSIONS.find(m => m.id === row.mission_id);
+      if (base) set({ activeMission: base });
+      set({
+        squad: ctx, squadRemote: null, squadVersion: 0, squadStatus: row.status, squadAck: 0, squadNotice: null,
+        debriefResult: null, onlineResult: { state: 'idle' }, externalRiskPts: 0, launchFailureReason: null, launchWeatherNote: null,
+        activeEvent: null, resolvedEventIds: [], decisionLog: [], missionProgress: 0, missionPhase: 'COUNTDOWN', simSpeed: 1,
+      });
+      get().applyRemoteSquad(row);
+    },
+
+    leaveSquad: () => {
+      const stats = calculateStats(defaultComponentIds, get().activeMission, 'launch-medium', 'hohmann');
+      set({
+        squad: null, squadRemote: null, squadVersion: 0, squadStatus: null, squadNotice: null, squadAck: 0,
+        screen: 'missions', selectedComponentIds: defaultComponentIds, debriefResult: null, onlineResult: { state: 'idle' },
+        activeEvent: null, resolvedEventIds: [], decisionLog: [], missionProgress: 0, missionPhase: 'COUNTDOWN', simSpeed: 1,
+        externalRiskPts: 0, launchFailureReason: null, launchWeatherNote: null, ...stats,
+      });
+    },
+
+    // Turn a database row into local state. Idempotent: older versions are ignored.
+    applyRemoteSquad: (row) => {
+      const cur = get();
+      const sq = cur.squad;
+      if (!sq || row.version < cur.squadVersion) return;
+      const st = row.state;
+      const prevStage = cur.squadRemote?.stage ?? null;
+      const base = MISSIONS.find(m => m.id === cur.activeMission.id) ?? cur.activeMission;
+      const mission = { ...base, budget: st.budgetM };
+      const stats = calculateStats(st.selectedComponentIds, mission, st.selectedLauncherId, st.selectedTrajectoryId);
+      const patch: Partial<GameState> = {
+        squadRemote: st, squadVersion: row.version, squadStatus: row.status,
+        activeMission: mission, selectedComponentIds: st.selectedComponentIds,
+        selectedLauncherId: st.selectedLauncherId, selectedTrajectoryId: st.selectedTrajectoryId, ...stats,
+      };
+      // keep the server's cost once the build is frozen (it includes the integrated launcher)
+      if (st.stage !== 'briefing' && st.stage !== 'builder' && st.costM > 0) patch.totalCostM = st.costM;
+
+      if (st.stage !== prevStage) {
+        const target = SQUAD_STAGE_SCREEN[st.stage];
+        if (target) patch.screen = target;
+        if (prevStage !== null) sounds.playToggle();
+      }
+      set(patch);
+
+      // entering mission control: every console initialises the same simulation
+      if (st.stage === 'mission_control' && prevStage !== 'mission_control') {
+        const w = st.launch?.wx;
+        set({ externalRiskPts: cur.externalRiskPts, launchWeatherNote: w ? `${w.overall} (${Math.round(w.p * 100)}% loss risk) — ${w.summary}` : null });
+        get().initMissionSimulation();
+      }
+
+      if (st.stage === 'mission_control' && st.sim) {
+        if (!sq.isHost) {
+          const sim = st.sim;
+          const ev = sim.activeEventId ? MISSION_EVENTS.find(e => e.id === sim.activeEventId) ?? null : null;
+          set({
+            missionPhase: sim.missionPhase as MissionPhase, missionProgress: sim.missionProgress, simSpeed: sim.simSpeed,
+            elapsedDays: sim.elapsedDays, distanceCoveredKm: sim.distanceCoveredKm, currentVelocityKms: sim.currentVelocityKms,
+            currentFuelPct: sim.currentFuelPct, currentPowerW: sim.currentPowerW, currentCommPct: sim.currentCommPct,
+            currentRiskPct: sim.currentRiskPct, scienceCollected: sim.scienceCollected, discoveriesCount: sim.discoveriesCount,
+            activeEvent: ev, resolvedEventIds: sim.resolvedEventIds, decisionLog: sim.decisionLog as MissionDecisionRecord[],
+          });
+        }
+      }
+
+      // The Flight Director's console is the authority: it consumes the crew's queued commands.
+      if (sq.isHost && st.stage === 'mission_control') {
+        let ack = get().squadAck;
+        for (const c of st.cmds ?? []) {
+          if (c.id <= ack) continue;
+          ack = c.id;
+          const s2 = get();
+          if (c.kind === 'event') {
+            if (s2.activeEvent && s2.activeEvent.id === c.eventId) get().resolveEventOption(s2.activeEvent, c.optionIndex, true);
+          } else if (c.kind === 'ops') {
+            const def = OPS[c.op];
+            if (!def) continue;
+            const e = def.effects;
+            set(s3 => ({
+              scienceCollected: Math.max(0, s3.scienceCollected + (e.science ?? 0)),
+              currentRiskPct: clampN(s3.currentRiskPct + (e.risk ?? 0), 2, 99),
+              currentFuelPct: clampN(s3.currentFuelPct + (e.fuel ?? 0), 0, 100),
+              currentPowerW: Math.max(0, s3.currentPowerW + (e.power ?? 0)),
+              decisionLog: [...s3.decisionLog, {
+                id: `ops-${c.id}`, timestamp: `Day ${Math.floor(s3.elapsedDays)}`, title: `${def.label} (${crewRole(def.role)?.label ?? def.role})`,
+                chosenOptionLabel: `Ordered by ${c.by}`, impactSummary: def.hint,
+                scienceDelta: e.science ?? 0, riskDelta: e.risk ?? 0, fuelDelta: e.fuel ?? 0,
+              }],
+            }));
+            sounds.playMilestone();
+          } else if (c.kind === 'abort') {
+            set({ launchFailureReason: `Mission aborted by Commander ${c.by}` });
+            get().completeMission('FAILURE');
+          }
+        }
+        if (ack !== get().squadAck) { set({ squadAck: ack }); void get().pushSquadSim(); }
+      }
+
+      // result visible to everyone → debrief
+      if (st.stage === 'debrief' && st.result) {
+        const d = st.result.debrief;
+        if (d && !get().debriefResult) set({ debriefResult: d, missionPhase: st.result.status === 'FAILURE' ? 'MISSION_FAILED' : 'MISSION_COMPLETE', simSpeed: 0 });
+        if (row.status === 'completed' && get().onlineResult.state === 'idle') void get().submitOnlineResult();
+      }
+    },
+
+    squadDo: async (action, payload = {}, opts) => {
+      const sq = get().squad;
+      if (!sq) return false;
+      const res = await squadAct(sq.gameId, action, payload);
+      if (!res.ok) {
+        if (!opts?.silent) { get().setSquadNotice(res.error); sounds.playWarning(); }
+        return false;
+      }
+      return true;
+    },
+
+    // Flight Director → everyone: snapshot of the running simulation (+ ack of consumed commands)
+    pushSquadSim: async () => {
+      const s = get();
+      if (!s.squad?.isHost || s.squadRemote?.stage !== 'mission_control' || squadPushing) return;
+      if (s.missionPhase === 'MISSION_COMPLETE' || s.missionPhase === 'MISSION_FAILED') return;
+      squadPushing = true;
+      try {
+        const sim: SquadSim = {
+          missionPhase: s.missionPhase, missionProgress: Number(s.missionProgress.toFixed(2)), simSpeed: s.simSpeed,
+          elapsedDays: Number(s.elapsedDays.toFixed(2)), distanceCoveredKm: Math.round(s.distanceCoveredKm),
+          currentVelocityKms: s.currentVelocityKms, currentFuelPct: Number(s.currentFuelPct.toFixed(1)), currentPowerW: Math.round(s.currentPowerW),
+          currentCommPct: Math.round(s.currentCommPct), currentRiskPct: Number(s.currentRiskPct.toFixed(1)),
+          scienceCollected: Number(s.scienceCollected.toFixed(1)), discoveriesCount: s.discoveriesCount,
+          activeEventId: s.activeEvent?.id ?? null, resolvedEventIds: s.resolvedEventIds, decisionLog: s.decisionLog.slice(-12),
+        };
+        await squadAct(s.squad.gameId, 'sim.sync', { sim, ack: s.squadAck });
+      } finally { squadPushing = false; }
+    },
+
     groupMissionId: null,
     setGroupMission: (id) => set({ groupMissionId: id }),
     runId: null,
@@ -777,7 +1004,7 @@ export const useGameStore = create<GameState>((set, get) => {
     // Register the attempt server-side at commit-to-launch. The run id is the only
     // handle the server accepts for rewards; failures leave the game playable offline.
     startOnlineRun: async () => {
-      if (!isSupabaseConfigured) return;
+      if (!isSupabaseConfigured || get().squad) return;
       set({ runId: null, runError: null, onlineResult: { state: 'idle' } });
       try {
         const res = await startMissionRunAction(get().activeMission.id, get().groupMissionId);
@@ -790,7 +1017,15 @@ export const useGameStore = create<GameState>((set, get) => {
 
     // Send raw simulation readings; the database recomputes and caps every reward.
     submitOnlineResult: async () => {
-      const { runId, debriefResult, runError } = get();
+      const { runId, debriefResult, runError, squad } = get();
+      if (squad) {
+        // Squad rewards: every member claims from the shared result the server stored.
+        if (get().onlineResult.state === 'pending' || get().onlineResult.state === 'verified') return;
+        set({ onlineResult: { state: 'pending' } });
+        const res = await squadClaim(squad.gameId);
+        set({ onlineResult: res.ok ? { state: 'verified', data: res.data } : { state: 'error', error: res.error } });
+        return;
+      }
       if (!debriefResult) return;
       if (!runId) {
         set({ onlineResult: { state: 'offline', reason: runError ?? 'Not signed in — result kept on this device only.' } });
@@ -827,6 +1062,9 @@ export const useGameStore = create<GameState>((set, get) => {
         resolvedEventIds: [],
         decisionLog: [],
         debriefResult: null,
+        externalRiskPts: 0,
+        launchFailureReason: null,
+        launchWeatherNote: null,
         runId: null,
         runError: null,
         onlineResult: { state: 'idle' },

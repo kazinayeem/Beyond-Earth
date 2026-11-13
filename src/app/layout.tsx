@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter, Roboto_Mono, Exo_2 } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/components/network/AuthProvider';
+import { SquadChatDock } from '@/components/squadgame/SquadChatDock';
 
 const inter = Inter({
   variable: '--font-inter',
@@ -21,7 +22,7 @@ const exo = Exo_2({
 const SITE_URL = 'https://beyond-earth-xi.vercel.app';
 const SITE_NAME = 'Mission Control: Beyond Earth';
 const DESCRIPTION =
-  'Plan real space missions to the Moon, Mars, an asteroid and Earth orbit. Build your spacecraft, fly a realistic 3D launch, team up in squads of three and climb the leaderboard.';
+  'Plan real space missions to the Moon, Mars, an asteroid and Earth orbit. Build your spacecraft, fly a realistic 3D launch, team up in squads of up to four and climb the leaderboard.';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -68,7 +69,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} ${robotoMono.variable} ${exo.variable} dark h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-[#020617] text-slate-100 overflow-x-hidden font-sans">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>{children}<SquadChatDock /></AuthProvider>
       </body>
     </html>
   );
