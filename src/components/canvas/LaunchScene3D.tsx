@@ -28,6 +28,8 @@ export interface LaunchViewState {
   paused: boolean;
   speed: number;
   compression: number;
+  /** Vehicle lost (weather / anomaly): hide the rocket and burst into fire and smoke. */
+  destroyed?: boolean;
 }
 
 export type CameraMode = 'cinematic' | 'chase' | 'orbit' | 'side' | 'cockpit' | 'far';
@@ -1144,6 +1146,7 @@ export const LaunchScene3D: React.FC<Props> = ({
     let prevFairing = true;
     let prevT = -999;
     let shake = 0;
+    let wasDestroyed = false;
     const lastNozzle = new THREE.Vector3();
     let hasLastNozzle = false;
     const v = new THREE.Vector3();
@@ -1174,6 +1177,24 @@ export const LaunchScene3D: React.FC<Props> = ({
       rk.root.position.copy(Pl);
       rk.root.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.axis);
       rk.root.updateMatrixWorld(true);
+
+      // Vehicle loss: burst once, then keep the rocket hidden
+      if (st.destroyed) {
+        if (!wasDestroyed) {
+          wasDestroyed = true;
+          shake += 2.5;
+          for (let i = 0; i < 260; i++) {
+            const dir = v.set(Math.random() - 0.5, Math.random() * 0.7, Math.random() - 0.5).normalize();
+            fire.spawn(tmpV.copy(Pl), tmpV2.copy(dir).multiplyScalar(0.02 + Math.random() * 0.12), 0.002 + Math.random() * 0.003, 0, 0.5 + Math.random() * 1.2, 1, 1, 1, 0.9);
+          }
+          for (let i = 0; i < 160; i++) {
+            const dir = v.set(Math.random() - 0.5, Math.random() * 0.4, Math.random() - 0.5).normalize();
+            smoke.spawn(tmpV.copy(Pl), tmpV2.copy(dir).multiplyScalar(0.004 + Math.random() * 0.02), 0.004, 0.006, 4, 0.5, 0, 0, 0.5);
+          }
+        }
+        rk.root.visible = false;
+        engineLight.intensity = 0;
+      } else if (wasDestroyed) { wasDestroyed = false; rk.root.visible = true; }
 
       // Swing arms retract before liftoff
       const armA = s.t > -2 ? Math.min(1, (s.t + 2) / 1.5) : 0;
@@ -1229,7 +1250,7 @@ export const LaunchScene3D: React.FC<Props> = ({
       engineLight.intensity = s.engineRunning && s.stage === 1 ? 6 * thr * (0.85 + 0.15 * flick) * (0.3 + s.atmosphere) : 0;
 
       // Emit particles (sub-stepped along the nozzle path so fast trails stay continuous)
-      if (dt > 0) {
+      if (dt > 0 && !st.destroyed) {
         if (s.t < 0) {
           // Cryogenic vent plumes from the LOX tank
           if (Math.random() < 0.6) {

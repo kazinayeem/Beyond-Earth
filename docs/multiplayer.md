@@ -63,6 +63,7 @@ The default email templates work as they are. Confirmation and recovery links la
 ```
 NEXT_PUBLIC_SUPABASE_URL=https://czuofwvddtnohwnfienx.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_…
+NASA_API_KEY=your-api.nasa.gov-key   # server only; optional (falls back to DEMO_KEY)
 ```
 
 The app itself never uses the service-role key. Only `scripts/supabase/seedPlayers.ts` and `verifyLive.ts` read `SUPABASE_SERVICE_ROLE_KEY`, and they run in Node, outside the Next.js bundle.
@@ -87,10 +88,29 @@ The app itself never uses the service-role key. Only `scripts/supabase/seedPlaye
 
 ## Squads
 
-- A squad holds at most 3 members, and each player belongs to at most one squad.
-- The 3-member limit is enforced under a row lock in `respond_to_invitation`, and again by a trigger on `group_members`. That makes it race-safe.
+- A squad holds 2–4 members (a squad mission needs at least 2), and each player belongs to at most one squad.
+- The 4-member limit is enforced under a row lock in `respond_to_invitation`, and again by a trigger on `group_members`. That makes it race-safe.
 - Any member can invite. Invitations must be accepted and expire after 7 days. Duplicate pending invitations and self-invitations are rejected.
 - Only the leader can remove members or transfer leadership. When the leader leaves, the longest-serving member takes over. When the last member leaves, the squad is dissolved.
+
+## Crew roles (20) and squad mission rooms
+
+Migration `20261113120000_squad_game.sql` adds:
+
+- **20 crew roles** (`src/lib/network/crewRoles.ts` mirrors `private.all_crew_roles()`): Mission Commander, Mission Director, Mission Planner, Project Manager, Risk Manager, Aerospace / Mechanical / Electrical / Software / Thermal / Propulsion Engineer, Science Officer, Planetary Scientist, Data Scientist, Robotics Engineer, Research Scientist, Flight Director, Flight Controller, Navigation Officer, Communication Officer. Roles are exclusive within a squad; the leader assigns any number of roles to any member (`set_crew_roles`). Roles nobody holds fall to the leader, so every duty always has an owner. The squad page and the invite dialog use the same grouped role list, each with an (i) detail popup.
+- **Mission rooms** at `/squad/<squad id or code>/<mission id>`. `create_squad_game` stores the room in `squad_games`; **every** change goes through `squad_game_act`, which checks membership, the caller's effective roles, the stage and per-mission limits:
+
+| Stage | Who | Action |
+|---|---|---|
+| Briefing | Mission Director · Mission Commander | budget cap (±30 %) · approve the plan |
+| Build | owner of each module family (see `componentOwnerRole`) · Aerospace Engineer | install / remove · freeze the build |
+| Rocket & route | Aerospace Engineer · Mission Planner · Mission Commander | launch vehicle · trajectory · authorise |
+| Launch | Flight Director · Risk Manager · Flight Controller | GO/NO-GO from live weather · weather waiver · LAUNCH |
+| Flight | role owners per event category, `OPS` actions, Commander abort | the Flight Director's console runs the simulation and applies the queued commands |
+
+- **Launch weather.** `src/lib/weather/launchWeather.ts` evaluates wind, gusts, precipitation, cloud, lightning and temperature against launch-commit-style limits and returns GO / MARGINAL / NO-GO plus a loss probability. Live data: Open-Meteo (real-time) cross-checked with NASA POWER, `GET /api/nasa/weather`. `GET /api/nasa/space-weather` (NASA DONKI flares/CMEs/storms) and `GET /api/nasa/neo` (NeoWs) add flight-risk points. The commit roll happens in the database (`launch.commit`): a loss destroys the vehicle at a random time during the first-stage burn and the debrief names the cause. A NO-GO needs the Risk Manager's waiver before the Flight Director can declare GO.
+- **Squad chat.** `squad_messages` (RLS: squad members only, Realtime) plus the floating bubble (`SquadChatDock`) on every page. Key game moments are mirrored into the chat as system lines.
+- **Rewards.** When the room ends, every member calls `squad_game_claim`, which creates a run and goes through `complete_mission` with the server-stored result (squad bonus included).
 
 ## Mission rewards (server-computed)
 

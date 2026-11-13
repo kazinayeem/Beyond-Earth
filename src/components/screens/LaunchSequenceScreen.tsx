@@ -15,8 +15,15 @@ import {
 } from '@/lib/flight/ascentProfile';
 import { Pause, Play, FastForward, CheckCircle2, Radio, Rocket, ZoomIn, ZoomOut, RotateCcw, Move3d, Clapperboard, Video, Orbit, PanelRight, Eye, Globe2 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
+import { useLaunchWeather } from '@/lib/weather/useLaunchWeather';
+import { rollLaunchOutcome, type WxScenario } from '@/lib/weather/launchWeather';
+import { WeatherPanel, spaceSummary } from '@/components/weather/WeatherPanel';
+import { WeatherOverlay } from '@/components/weather/WeatherOverlay';
+import { ExplosionOverlay } from '@/components/weather/ExplosionOverlay';
+import { CloudRain } from 'lucide-react';
+import { SquadLaunchPanel } from '@/components/squadgame/SquadLaunchPanel';
 
-type Stage = 'poll' | 'ready' | 'flight' | 'orbit';
+type Stage = 'poll' | 'ready' | 'flight' | 'orbit' | 'lost';
 
 const STATIONS = ['Range', 'Weather', 'Propulsion', 'Guidance', 'Network', 'Payload'] as const;
 
@@ -77,6 +84,21 @@ export const LaunchSequenceScreen: React.FC = () => {
   const [skipping, setSkipping] = useState(false);
   const [eventsPassed, setEventsPassed] = useState(0);
   const [camMode, setCamMode] = useState<CameraMode>('cinematic');
+  const squad = useGameStore(s => s.squad);
+  const squadLaunch = useGameStore(s => s.squadRemote?.launch);
+  const squadDo = useGameStore(s => s.squadDo);
+  const [soloScenario, setSoloScenario] = useState<WxScenario>('live');
+  const scenario: WxScenario = squad ? (squadLaunch?.wxScenario ?? 'live') : soloScenario;
+  const isFD = !!squad?.myRoles.includes('flight_director');
+  const setScenario = (v: WxScenario) => { if (squad) void squadDo('launch.wx', { scenario: v }); else setSoloScenario(v); };
+  const [showWx, setShowWx] = useState(false);
+  const [lost, setLost] = useState(false);
+  const [lostCause, setLostCause] = useState('');
+  const wx = useLaunchWeather(activeMission.id, scenario);
+  const wxRef = useRef(wx);
+  useEffect(() => { wxRef.current = wx; }, [wx]);
+  const failAtRef = useRef<number | null>(null);
+  const failCauseRef = useRef<string>('');
   const camApi = useRef<LaunchCameraApi>(null);
   const eventsPassedRef = useRef(0);
 
@@ -143,14 +165,41 @@ export const LaunchSequenceScreen: React.FC = () => {
   }, [stage]);
 
   const commitLaunch = useCallback(() => {
-    if (stageRef.current !== 'ready') return;
+    if (stageRef.current !== 'ready' || useGameStore.getState().squad) return;
     sounds.playSelect();
     sounds.say('T minus ten', { interrupt: true });
     void useGameStore.getState().startOnlineRun(); // server-side run registration (rewards need it)
+    const w = wxRef.current;
+    const roll = rollLaunchOutcome(w.assessment, Math.random);
+    failAtRef.current = roll.outcome === 'failure' ? roll.failAtT : null;
+    failCauseRef.current = roll.cause ?? '';
+    useGameStore.getState().setLaunchEnvironment({
+      externalRiskPts: w.liveRiskPts,
+      failureReason: null,
+      note: `${w.assessment.overall} at ${w.site.short} (${Math.round(w.assessment.failureProbability * 100)}% loss risk)${w.space?.available ? ' · ' + spaceSummary(w.space) : ''}`,
+    });
     stageRef.current = 'flight';
     setStage('flight');
     setLaunchStatus('COUNTING');
   }, [setLaunchStatus]);
+
+  // Squad room: the Flight Controller's LAUNCH (stored on the server) starts the same countdown on every console.
+  useEffect(() => {
+    if (!squad || squadLaunch?.phase !== 'counting' || stageRef.current === 'flight' || stageRef.current === 'orbit' || stageRef.current === 'lost') return;
+    const late = Math.min(4, Math.max(0, (Date.now() - (squadLaunch.startedAt ?? Date.now())) / 1000));
+    tRef.current = -10 + late;
+    failAtRef.current = squadLaunch.outcome === 'failure' ? (squadLaunch.failAtT ?? 60) : null;
+    failCauseRef.current = squadLaunch.cause ?? '';
+    const w = wxRef.current;
+    useGameStore.getState().setLaunchEnvironment({
+      externalRiskPts: w.liveRiskPts, failureReason: null,
+      note: squadLaunch.wx ? `${squadLaunch.wx.overall} at ${w.site.short} (${Math.round(squadLaunch.wx.p * 100)}% loss risk)` : null,
+    });
+    stageRef.current = 'flight';
+    setStage('flight');
+    setLaunchStatus('COUNTING');
+    sounds.say('T minus ten', { interrupt: true });
+  }, [squad, squadLaunch?.phase, squadLaunch?.startedAt, squadLaunch?.outcome, squadLaunch?.failAtT, squadLaunch?.cause, squadLaunch?.wx, setLaunchStatus]);
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
@@ -158,6 +207,17 @@ export const LaunchSequenceScreen: React.FC = () => {
     sounds.stopLaunchAudio(0.6);
     setLaunchStatus('ORBIT_ACHIEVED');
     updateLaunchTelemetry(TARGET_ALTITUDE_KM, 27900);
+    if (useGameStore.getState().squad) {
+      // squad room: any console may report orbit; the server moves everyone to Mission Control together
+      void (async () => {
+        for (let i = 0; i < 10; i++) {
+          const ok = await useGameStore.getState().squadDo('launch.finish', {}, { silent: true });
+          if (ok || useGameStore.getState().squadRemote?.stage !== 'launch') return;
+          await new Promise(r => setTimeout(r, 2500));
+        }
+      })();
+      return;
+    }
     initMissionSimulation();
     setScreen('mission_control');
   }, [initMissionSimulation, setLaunchStatus, setScreen, updateLaunchTelemetry]);
@@ -217,9 +277,20 @@ export const LaunchSequenceScreen: React.FC = () => {
         if (orbitHoldRef.current > 4.2) finish();
       }
     }
+    if (st === 'flight' && failAtRef.current !== null && t >= failAtRef.current) {
+      failAtRef.current = null;
+      stageRef.current = 'lost';
+      setStage('lost');
+      setLost(true);
+      setLostCause(failCauseRef.current);
+      sounds.stopLaunchAudio(0.2);
+      sounds.say('Vehicle lost. Anomaly on ascent.', { interrupt: true });
+      useGameStore.getState().setLaunchEnvironment({ failureReason: failCauseRef.current || 'Vehicle lost during ascent' });
+      window.setTimeout(() => { if (!doneRef.current) { doneRef.current = true; useGameStore.getState().completeMission('FAILURE'); } }, 6500);
+    }
     const sample = sampleAscent(t);
     const compression = t < 0 ? 1 : timeCompression(t);
-    viewRef.current = { sample, paused: isPaused || st === 'poll' || st === 'ready', speed: Math.min(spd, 4), compression };
+    viewRef.current = { sample, paused: isPaused || st === 'poll' || st === 'ready' || stageRef.current === 'lost', speed: Math.min(spd, 4), compression, destroyed: stageRef.current === 'lost' };
 
     // Countdown ticks
     if (t < 0 && st === 'flight') {
@@ -308,6 +379,7 @@ export const LaunchSequenceScreen: React.FC = () => {
   }, [commitLaunch]);
 
   const inFlight = stage === 'flight' || stage === 'orbit';
+  const wxVisual = wx.assessment.visual;
   const showCount = stage === 'flight' && (phase === 'PRELAUNCH' || phase === 'ENGINE_START') && count > 0;
 
   return (
@@ -323,6 +395,17 @@ export const LaunchSequenceScreen: React.FC = () => {
           vehicleLabel={activeMission.code}
           destination={activeMission.target}
         />
+        {(stage !== 'orbit') && <WeatherOverlay visual={wxVisual} reducedMotion={reducedMotion} />}
+        <ExplosionOverlay active={lost} reducedMotion={reducedMotion} />
+        {lost && (
+          <div className="absolute inset-x-0 top-[22%] z-30 flex justify-center pointer-events-none" aria-live="assertive">
+            <div className="px-6 py-4 rounded-2xl bg-rose-950/80 border border-rose-400/40 backdrop-blur-md text-center max-w-md">
+              <div className="hud-label text-rose-300">Vehicle lost</div>
+              <div className="mt-1 font-display text-xl text-white">Mission failed on ascent</div>
+              <div className="mt-1 text-sm text-rose-200/80">{lostCause}</div>
+            </div>
+          </div>
+        )}
 
         {/* ── Camera toolbar (left edge, vertically centred) ── */}
         <div className="absolute left-3 sm:left-4 top-20 sm:top-24 z-20 flex flex-col gap-1 p-1 rounded-xl bg-black/45 backdrop-blur-md border border-white/10" role="toolbar" aria-label="Camera">
@@ -366,7 +449,7 @@ export const LaunchSequenceScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => { sounds.playClick(); setPaused(p => !p); }}
-              disabled={!inFlight}
+              disabled={!inFlight || !!squad}
               aria-label={paused ? 'Resume simulation' : 'Pause simulation'}
               aria-pressed={paused}
               className="hud-btn"
@@ -390,7 +473,7 @@ export const LaunchSequenceScreen: React.FC = () => {
             <button
               type="button"
               onClick={() => { sounds.playClick(); setSkipping(true); }}
-              disabled={!inFlight || skipping}
+              disabled={!inFlight || skipping || !!squad}
               aria-label="Fast-forward to orbit"
               className="hud-btn gap-1.5 px-3"
             >
@@ -431,14 +514,26 @@ export const LaunchSequenceScreen: React.FC = () => {
                 </ul>
                 <button
                   type="button"
+                  onClick={() => setShowWx(v => !v)}
+                  className={`mt-3 w-full flex items-center justify-between rounded-lg border px-3 py-2 text-xs font-mono ${wx.assessment.overall === 'GO' ? 'border-emerald-400/30 text-emerald-300' : wx.assessment.overall === 'MARGINAL' ? 'border-amber-400/30 text-amber-300' : 'border-rose-400/40 text-rose-300'}`}
+                  aria-expanded={showWx}
+                >
+                  <span className="flex items-center gap-1.5"><CloudRain className="w-3.5 h-3.5" aria-hidden />Weather: {wx.assessment.overall}</span>
+                  <span>{Math.round(wx.assessment.failureProbability * 100)}% loss risk · {showWx ? 'hide' : 'details'}</span>
+                </button>
+                {showWx && <WeatherPanel wx={wx} scenario={scenario} onScenario={setScenario} canChangeScenario={squad ? isFD : true} className="mt-2 max-h-[40vh] overflow-y-auto" />}
+                {squad ? <SquadLaunchPanel assessment={wx.assessment} pollDone={stage === 'ready'} /> : (<>
+                <button
+                  type="button"
                   onClick={commitLaunch}
                   disabled={stage !== 'ready'}
-                  className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl py-3 font-display font-semibold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-cyan-400 text-slate-950 hover:bg-cyan-300 enabled:shadow-[0_0_24px_rgba(34,211,238,0.35)]"
+                  className={`mt-4 w-full flex items-center justify-center gap-2 rounded-xl py-3 font-display font-semibold tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed text-slate-950 ${wx.assessment.overall === 'NO-GO' ? 'bg-rose-400 hover:bg-rose-300' : 'bg-cyan-400 hover:bg-cyan-300 enabled:shadow-[0_0_24px_rgba(34,211,238,0.35)]'}`}
                 >
                   <Rocket className="w-4 h-4" aria-hidden />
-                  {stage === 'ready' ? 'Commit launch' : 'Polling consoles…'}
+                  {stage !== 'ready' ? 'Polling consoles…' : wx.assessment.overall === 'NO-GO' ? 'Launch anyway · weather NO-GO' : 'Commit launch'}
                 </button>
                 <p className="mt-2 text-center text-[11px] text-slate-500">You are Flight Director · Enter to commit</p>
+                </>)}
               </div>
             </motion.div>
           )}

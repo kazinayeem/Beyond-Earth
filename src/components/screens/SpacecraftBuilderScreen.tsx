@@ -4,6 +4,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
 import { SPACECRAFT_COMPONENTS, SYNERGY_BONUSES } from '@/data/components';
+import { componentOwnerRole } from '@/lib/squad/permissions';
+import { crewRole } from '@/lib/network/crewRoles';
 import { LAUNCH_VEHICLES } from '@/data/launchers';
 import { ComponentCategory, SpacecraftComponent } from '@/types/game';
 import { SpacecraftHangar3D, HangarApi, HangarView } from '@/components/canvas/SpacecraftHangar3D';
@@ -60,6 +62,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
   const selectedLauncherId = useGameStore(s => s.selectedLauncherId);
   const setScreen = useGameStore(s => s.setScreen);
   const reducedMotion = useGameStore(s => s.reducedMotion);
+  const squad = useGameStore(s => s.squad);
 
   const [activeCategory, setActiveCategory] = useState<ComponentCategory | 'all'>('instruments');
   const [query, setQuery] = useState('');
@@ -186,6 +189,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          {!squad && (<>
           <button type="button" onClick={() => applyPreset(loadLroBuild, 'NASA LRO configuration loaded')} className="preset-btn text-violet-200 border-violet-400/30 hover:border-violet-300/60">
             <Radio className="w-3.5 h-3.5" /> LRO preset
           </button>
@@ -195,6 +199,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
           <button type="button" onClick={() => applyPreset(clearComponents, 'All modules removed')} className="preset-btn text-slate-300 border-white/10 hover:text-rose-200 hover:border-rose-400/40">
             <Trash2 className="w-3.5 h-3.5" /> Clear
           </button>
+          </>)}
         </div>
       </div>
 
@@ -239,6 +244,10 @@ export const SpacecraftBuilderScreen: React.FC = () => {
               const overBudget = !on && totalCostM + c.costM > activeMission.budget;
               const overMass = !on && totalMassKg + c.massKg > massLimit;
               const Icon = CAT_ICON[c.category];
+              const ownerId = squad ? componentOwnerRole(c.id) : null;
+              const locked = !!ownerId && !squad!.myRoles.includes(ownerId);
+              const ownerLabel = ownerId ? crewRole(ownerId)?.short ?? ownerId : null;
+              const ownerNames = ownerId ? squad!.members.filter(m => m.effective.includes(ownerId)).map(m => m.name.split(' ')[0]).join(', ') : '';
               const pw = c.powerGeneratedW ? `+${c.powerGeneratedW}` : c.powerW ? `−${c.powerW}` : '0';
               return (
                 <li key={c.id}>
@@ -249,7 +258,8 @@ export const SpacecraftBuilderScreen: React.FC = () => {
                     onFocus={() => setHoverId(c.id)}
                     onBlur={() => setHoverId(null)}
                     aria-pressed={on}
-                    className={`module-tile group w-full text-left ${on ? 'module-tile-on' : ''}`}
+                    title={locked ? `Locked — only the ${crewRole(ownerId!)?.label} installs this${ownerNames ? ` (${ownerNames})` : ''}` : undefined}
+                    className={`module-tile group w-full text-left ${on ? 'module-tile-on' : ''} ${locked ? 'opacity-55' : ''}`}
                   >
                     <span className={`module-icon ${on ? 'text-slate-950 bg-cyan-300' : 'text-cyan-200 bg-cyan-400/10'}`}>
                       {on ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
@@ -257,6 +267,7 @@ export const SpacecraftBuilderScreen: React.FC = () => {
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center gap-1.5">
                         <span className="truncate text-[13px] font-medium text-slate-100">{shortName(c.name)}</span>
+                        {ownerLabel && <span className={`shrink-0 text-[9px] font-mono px-1 rounded ${locked ? 'bg-slate-500/20 text-slate-300' : 'bg-emerald-400/15 text-emerald-200'}`}>{locked ? '🔒 ' : '✓ '}{ownerLabel}</span>}
                         {c.isRealNasaInstrument && <span className="shrink-0 text-[9px] font-mono px-1 rounded bg-violet-400/15 text-violet-200">NASA</span>}
                       </span>
                       <span className="mt-0.5 flex flex-wrap gap-x-2.5 text-[11px] font-mono text-slate-400 tabular-nums">

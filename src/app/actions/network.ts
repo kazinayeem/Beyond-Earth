@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
 import { friendlyError, type ActionResult } from '@/lib/network/errors';
 import { CREW_ROLE_IDS } from '@/lib/network/crewRoles';
+import { MISSIONS } from '@/data/missions';
+import { DEFAULT_BUILD_IDS } from '@/data/components';
 
 async function authed() {
   const supabase = await createClient();
@@ -106,7 +108,7 @@ export async function updateGroupAction(input: { name: string; description: stri
 
 const crewRoleSchema = z.enum(CREW_ROLE_IDS);
 
-export async function invitePlayerAction(playerId: string, crewRole: string = 'engineer') {
+export async function invitePlayerAction(playerId: string, crewRole: string = 'flight_controller') {
   if (!uuid.safeParse(playerId).success) return { ok: false, error: 'Player not found.' } as const;
   if (!crewRoleSchema.safeParse(crewRole).success) return { ok: false, error: 'Choose a crew role.' } as const;
   return rpc<string>('invite_to_group', { p_invitee: playerId, p_crew_role: crewRole }, ['/squad', '/players']);
@@ -116,6 +118,26 @@ export async function setCrewRoleAction(playerId: string, crewRole: string) {
   if (!uuid.safeParse(playerId).success) return { ok: false, error: 'Player not found.' } as const;
   if (!crewRoleSchema.safeParse(crewRole).success) return { ok: false, error: 'Choose a crew role.' } as const;
   return rpc('set_crew_role', { p_player: playerId, p_crew_role: crewRole });
+}
+
+/** Leader sets the whole crew plan: { playerId: [roleId, …] }. Every squad member must be present; each role has one owner. */
+export async function setCrewRolesAction(assignments: Record<string, string[]>) {
+  const parsed = z.record(uuid, z.array(crewRoleSchema).max(20)).safeParse(assignments);
+  if (!parsed.success) return { ok: false, error: 'The crew plan is invalid.' } as const;
+  return rpc('set_crew_roles', { p_assignments: parsed.data });
+}
+
+/** Leader opens (or resumes) the mission room for a mission. Returns the game id. */
+export async function createSquadGameAction(mission: string) {
+  if (!missionId.safeParse(mission).success) return { ok: false, error: 'Unknown mission.' } as const;
+  const m = MISSIONS.find(x => x.id === mission);
+  if (!m) return { ok: false, error: 'Unknown mission.' } as const;
+  return rpc<string>('create_squad_game', { p_mission: mission, p_budget: m.budget, p_components: DEFAULT_BUILD_IDS }, ['/squad']);
+}
+
+export async function abandonSquadGameAction(gameId: string) {
+  if (!uuid.safeParse(gameId).success) return { ok: false, error: 'Mission room not found.' } as const;
+  return rpc('abandon_squad_game', { p_game: gameId }, ['/squad']);
 }
 
 export async function respondInvitationAction(invitationId: string, accept: boolean) {

@@ -22,6 +22,9 @@ import {
   Globe2
 } from 'lucide-react';
 import { sounds } from '@/lib/sound';
+import { SquadOpsPanel } from '@/components/squadgame/SquadOpsPanel';
+import { EVENT_ROLES } from '@/lib/squad/permissions';
+import { crewRole } from '@/lib/network/crewRoles';
 
 export const MissionControlScreen: React.FC<{ onOpenTutorial: () => void }> = ({ onOpenTutorial }) => {
   const {
@@ -45,7 +48,18 @@ export const MissionControlScreen: React.FC<{ onOpenTutorial: () => void }> = ({
     tickSimulation
   } = useGameStore();
 
+  const squad = useGameStore(s => s.squad);
   const lastTimeRef = useRef<number | null>(null);
+
+  // Squad rooms: only the crew roles responsible for this kind of event can answer it.
+  let eventLock: string | null = null;
+  if (squad && activeEvent) {
+    const allowed = EVENT_ROLES[activeEvent.category] ?? [];
+    if (!allowed.some(r => squad.myRoles.includes(r))) {
+      const names = squad.members.filter(m => allowed.some(r => m.effective.includes(r))).map(m => m.name.split(' ')[0]);
+      eventLock = `Waiting for ${names.join(' / ') || 'the responsible crew'} — this decision belongs to: ${allowed.map(r => crewRole(r)?.label ?? r).join(', ')}. Use the squad chat to advise them.`;
+    }
+  }
 
   // Ambient sound management: starts subtle space ambience and cleans up on unmount
   useEffect(() => {
@@ -106,7 +120,7 @@ export const MissionControlScreen: React.FC<{ onOpenTutorial: () => void }> = ({
   return (
     <div className="relative z-10 max-w-7xl w-full mx-auto px-2.5 sm:px-4 py-2 select-none flex flex-col h-[calc(100dvh-54px)] max-h-[calc(100dvh-54px)] justify-between overflow-hidden">
       {/* Event Modal (if critical crisis triggered) */}
-      <EventModal event={activeEvent} onSelectOption={resolveEventOption} />
+      <EventModal event={activeEvent} onSelectOption={resolveEventOption} disabledReason={eventLock} />
 
       {/* Top Mission Control Bar */}
       <div className="shrink-0 p-2.5 sm:p-3 rounded-2xl bg-slate-950/80 backdrop-blur-md border border-cyan-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
@@ -261,6 +275,8 @@ export const MissionControlScreen: React.FC<{ onOpenTutorial: () => void }> = ({
 
         {/* Right Sidebar: Timeline & Flight Decisions Feed (4 cols) */}
         <div className="lg:col-span-4 flex flex-col gap-2 min-h-0 h-full">
+          {squad && <SquadOpsPanel />}
+
           {/* Subsystems Strip */}
           <div className="shrink-0 p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 grid grid-cols-3 gap-2 text-xs font-mono">
             {/* Fuel */}

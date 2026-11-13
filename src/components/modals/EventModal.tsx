@@ -10,11 +10,13 @@ import { sounds } from '@/lib/sound';
 interface EventModalProps {
   event: MissionEvent | null;
   onSelectOption: (event: MissionEvent, optionIndex: number) => void;
+  /** Squad rooms: set when this console's crew role may not answer this event */
+  disabledReason?: string | null;
 }
 
 const emptySubscribe = () => () => {};
 
-export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption }) => {
+export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption, disabledReason = null }) => {
   const mounted = useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -34,7 +36,7 @@ export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption })
 
   // Keyboard shortcut listener: Keys [1], [2], [3] select corresponding option
   useEffect(() => {
-    if (!event) return;
+    if (!event || disabledReason) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === '1' && event.options[0]) {
         sounds.playClick();
@@ -49,7 +51,7 @@ export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption })
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [event, onSelectOption]);
+  }, [event, onSelectOption, disabledReason]);
 
   if (!mounted || !event) return null;
 
@@ -151,6 +153,12 @@ export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption })
               </div>
             )}
 
+            {disabledReason && (
+              <div role="status" className="mb-3 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-sm text-amber-100">
+                {disabledReason}
+              </div>
+            )}
+
             {/* Options Header */}
             <div className="text-xs font-mono text-cyan-400/90 mb-2.5 flex items-center justify-between">
               <div className="flex items-center space-x-2">
@@ -166,12 +174,13 @@ export const EventModal: React.FC<EventModalProps> = ({ event, onSelectOption })
                 return (
                   <button
                     key={idx}
+                    disabled={!!disabledReason}
                     onClick={() => {
                       sounds.playClick();
                       onSelectOption(event, idx);
                     }}
                     onMouseEnter={() => sounds.playToggle()}
-                    className="w-full text-left p-3.5 sm:p-4 rounded-xl border border-slate-800 bg-slate-950/70 hover:bg-cyan-950/40 hover:border-cyan-400/60 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all duration-150 group"
+                    className="w-full text-left p-3.5 sm:p-4 rounded-xl border border-slate-800 bg-slate-950/70 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-950/70 hover:bg-cyan-950/40 hover:border-cyan-400/60 focus:border-cyan-400 focus:outline-none focus:ring-1 focus:ring-cyan-400/50 transition-all duration-150 group"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

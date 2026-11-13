@@ -172,6 +172,10 @@ export interface MissionDebriefResult {
   discoveriesCount: number;
   decisions: MissionDecisionRecord[];
   achievementsUnlocked: string[];
+  /** Set when the vehicle was lost during ascent (weather, anomaly) */
+  failureReason?: string;
+  /** Live NASA/weather conditions that applied at launch, for the debrief */
+  launchWeatherNote?: string;
 }
 
 export interface LeaderboardEntry {

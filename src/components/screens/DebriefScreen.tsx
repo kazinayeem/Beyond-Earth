@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useGameStore } from '@/store/gameStore';
 import { OnlineVerificationPanel } from '@/components/network/OnlineVerificationPanel';
@@ -28,6 +29,8 @@ interface DebriefProps {
 
 export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => {
   const { debriefResult, resetForNewMission, setScreen } = useGameStore();
+  const inSquad = useGameStore(s => !!s.squad);
+  const router = useRouter();
 
   useEffect(() => {
     if (debriefResult && debriefResult.status === 'SUCCESS') {
@@ -103,6 +106,13 @@ export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => 
 
           <div>{getStatusBadge()}</div>
         </div>
+
+        {(debriefResult.failureReason || debriefResult.launchWeatherNote) && (
+          <div className={`mt-4 rounded-xl border p-3 text-sm ${debriefResult.failureReason ? 'border-red-500/40 bg-red-950/30 text-red-200' : 'border-slate-700 bg-slate-950/50 text-slate-300'}`}>
+            {debriefResult.failureReason && <div><span className="font-mono text-xs text-red-300">ANOMALY CAUSE · </span>{debriefResult.failureReason}. The vehicle was destroyed during ascent.</div>}
+            {debriefResult.launchWeatherNote && <div className="mt-1 text-xs font-mono text-slate-400">Launch-day weather: {debriefResult.launchWeatherNote}</div>}
+          </div>
+        )}
 
         {/* Big Overall Rating Card */}
         <div className="my-6 p-6 rounded-2xl bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 border border-slate-800 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -331,12 +341,12 @@ export const DebriefScreen: React.FC<DebriefProps> = ({ onOpenLeaderboard }) => 
           <button
             onClick={() => {
               sounds.playClick();
-              resetForNewMission();
+              if (inSquad) router.push('/squad'); else resetForNewMission();
             }}
             className="w-full sm:w-auto flex items-center justify-center space-x-2 px-8 py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold font-mono text-sm tracking-wider shadow-[0_0_25px_rgba(6,182,212,0.35)] hover:scale-105 active:scale-95 transition-all"
           >
             <RotateCcw className="w-4 h-4" />
-            <span>START NEXT MISSION</span>
+            <span>{inSquad ? 'BACK TO SQUAD' : 'START NEXT MISSION'}</span>
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>

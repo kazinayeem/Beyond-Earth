@@ -127,16 +127,19 @@ async function main() {
   const invDee = (await q<{ i: string }>(`select public.invite_to_group($1) as i`, [dee]))[0].i;
   await as(cy);
   await q(`select public.respond_to_invitation($1, true)`, [invCy]);
-  ok((await q(`select * from public.group_members where group_id = $1`, [grp.id])).length === 3, 'third member joins (3/3)');
-  await as(ana);
-  ok(await fails(`select public.invite_to_group($1)`, [dup], /GROUP_FULL/), 'cannot invite into a full squad');
+  ok((await q(`select * from public.group_members where group_id = $1`, [grp.id])).length === 3, 'third member joins (3/4)');
   await as(dee);
-  await q(`select public.leave_group()`); // dissolve Dee's solo squad so only capacity blocks her
+  await q(`select public.leave_group()`); // dissolve Dee's solo squad so only capacity can block her
   ok((await q(`select * from public.groups where id = $1`, [deeGroup.id])).length === 0, 'last member leaving dissolves the squad');
-  ok(await fails(`select public.respond_to_invitation($1, true)`, [invDee], /GROUP_FULL/), 'fourth member is rejected at acceptance');
+  await q(`select public.respond_to_invitation($1, true)`, [invDee]);
+  ok((await q(`select * from public.group_members where group_id = $1`, [grp.id])).length === 4, 'fourth member joins (4/4)');
+  await as(ana);
+  ok(await fails(`select public.invite_to_group($1)`, [dup], /GROUP_FULL/), 'cannot invite into a full squad (max 4)');
   await asAdmin();
-  ok((await q<{ n: number }>(`select count(*)::int as n from public.group_members where group_id = $1`, [grp.id]))[0].n === 3, 'capacity still 3 after rejected join');
-  ok(await fails(`insert into public.group_members (group_id, player_id) values ($1, $2)`, [grp.id, dee], /GROUP_FULL/), 'trigger blocks a 4th member even for privileged inserts');
+  ok((await q<{ n: number }>(`select count(*)::int as n from public.group_members where group_id = $1`, [grp.id]))[0].n === 4, 'capacity is 4');
+  ok(await fails(`insert into public.group_members (group_id, player_id) values ($1, $2)`, [grp.id, dup], /GROUP_FULL/), 'trigger blocks a 5th member even for privileged inserts');
+  await as(dee);
+  await q(`select public.leave_group()`); // back to three members for the remaining checks
 
   await as(ben);
   ok(await fails(`select public.remove_group_member($1)`, [cy], /NOT_GROUP_LEADER/), 'non-leader cannot remove members');
@@ -252,25 +255,26 @@ async function main() {
     await as(u1);
     await q(`select public.create_group('Crew Test', '', 'orbit-cyan', null)`);
     ok(await fails(`select public.invite_to_group($1, 'janitor')`, [u2], /INVALID_CREW_ROLE/), 'unknown crew roles are rejected');
-    const i2 = (await q<{ i: string }>(`select public.invite_to_group($1, 'scientist') as i`, [u2]))[0].i;
+    const i2 = (await q<{ i: string }>(`select public.invite_to_group($1, 'science_officer') as i`, [u2]))[0].i;
     const i3 = (await q<{ i: string }>(`select public.invite_to_group($1) as i`, [u3]))[0].i;
-    ok((await q<{ crew_role: string }>(`select crew_role from public.group_invitations where id = $1`, [i2]))[0].crew_role === 'scientist', 'invitation stores the chosen crew role');
+    ok((await q<{ crew_role: string }>(`select crew_role from public.group_invitations where id = $1`, [i2]))[0].crew_role === 'science_officer', 'invitation stores the chosen crew role');
     await as(u2);
-    ok((await q<{ body: string }>(`select body from public.player_notifications where payload->>'invitation_id' = $1`, [i2]))[0]?.body.includes('Mission Scientist'), 'invite notification names the role');
+    ok((await q<{ body: string }>(`select body from public.player_notifications where payload->>'invitation_id' = $1`, [i2]))[0]?.body.includes('Science Officer'), 'invite notification names the role');
     await q(`select public.respond_to_invitation($1, true)`, [i2]);
     await as(u3);
     await q(`select public.respond_to_invitation($1, true)`, [i3]);
     const roles = await q<{ player_id: string; crew_role: string }>(`select player_id, crew_role from public.group_members where player_id = any($1)`, [[u2, u3]]);
-    ok(roles.find(r => r.player_id === u2)?.crew_role === 'scientist' && roles.find(r => r.player_id === u3)?.crew_role === 'engineer', 'accepted members get the offered role (default Space Engineer)');
-    ok(await fails(`select public.set_crew_role($1, 'navigator')`, [u2], /NOT_GROUP_LEADER/), "members can't change someone else's role");
-    await q(`select public.set_crew_role($1, 'comms')`, [u3]);
-    ok((await q<{ crew_role: string }>(`select crew_role from public.group_members where player_id = $1`, [u3]))[0].crew_role === 'comms', 'members can change their own role');
+    ok(roles.find(r => r.player_id === u2)?.crew_role === 'science_officer' && roles.find(r => r.player_id === u3)?.crew_role === 'flight_controller', 'accepted members get the offered role (default Flight Controller)');
+    ok(await fails(`select public.set_crew_role($1, 'navigation_officer')`, [u2], /NOT_GROUP_LEADER/), "members can't change anyone's role");
     await as(u1);
-    await q(`select public.set_crew_role($1, 'navigator')`, [u2]);
-    ok((await q<{ crew_role: string }>(`select crew_role from public.group_members where player_id = $1`, [u2]))[0].crew_role === 'navigator', 'leader can reassign roles');
+    await q(`select public.set_crew_role($1, 'communication_officer')`, [u3]);
+    ok((await q<{ crew_role: string }>(`select crew_role from public.group_members where player_id = $1`, [u3]))[0].crew_role === 'communication_officer', 'leader can reassign roles');
+    await q(`select public.set_crew_role($1, 'navigation_officer')`, [u2]);
+    ok((await q<{ crew_roles: string[] }>(`select crew_roles from public.group_members where player_id = $1`, [u2]))[0].crew_roles.includes('navigation_officer'), 'leader can assign several roles to one member');
+    ok(await fails(`select public.set_crew_role($1, 'janitor')`, [u2], /INVALID_CREW_ROLE/), 'unknown roles are rejected');
     await as(u2);
     ok((await q(`select 1 from public.player_notifications where kind = 'crew_role'`)).length === 1, 'reassigned member is notified');
-    ok(await fails(`update public.group_members set crew_role = 'engineer' where player_id = $1`, [u2], /permission denied/), 'crew roles cannot be written directly');
+    ok(await fails(`update public.group_members set crew_role = 'astronaut' where player_id = $1`, [u2], /permission denied/), 'crew roles cannot be written directly');
   }
 
   // ── Profile recovery ──

@@ -148,7 +148,7 @@ function SquadBoard({ rows }: { rows: GroupLeaderRow[] }) {
                 <tr key={r.group_id} className={`border-t border-white/[0.05] ${r.is_mine ? 'bg-cyan-400/10' : ''}`}>
                   <td className="px-4 py-2.5 font-mono text-slate-400">{r.rank}</td>
                   <td className="py-1.5"><span className="flex items-center gap-2.5"><PlayerAvatar avatar={r.emblem} size={30} /><span><span className="block text-white">{r.name}</span><span className="block text-[11px] font-mono text-slate-500">{r.group_code}</span></span></span></td>
-                  <td className="text-right font-mono">{r.members}/3</td>
+                  <td className="text-right font-mono">{r.members}/4</td>
                   <td className="text-right font-mono tabular-nums hidden sm:table-cell">{Number(r.science).toLocaleString()}</td>
                   <td className="text-right font-mono tabular-nums px-4 text-white">{Number(r.xp).toLocaleString()}</td>
                 </tr>

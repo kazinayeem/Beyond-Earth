@@ -100,3 +100,11 @@ npm run dev
 
 # Open http://localhost:3000 in your browser
 ```
+
+## Squad mission rooms, live weather & chat (new)
+
+- Squads hold **2–4** pilots and share **20 crew roles** (the leader can give one member several roles; every role has an (i) detail popup).
+- Squad missions run at `/squad/<squad id>/<mission id>` with the same screens as solo play, but every decision belongs to a role (budget → Mission Director, rocket → Aerospace Engineer, LAUNCH → Flight Controller, …) and is validated by the database.
+- Launch weather is live (Open-Meteo + NASA POWER), space weather comes from NASA DONKI and asteroids from NASA NeoWs. Launching into NO-GO weather can destroy the rocket.
+- A floating squad chat bubble (bottom-right) works on every page; messages are stored in Supabase.
+- Setup: copy `.env.local.example` to `.env.local`, apply `supabase/migrations/20261113120000_squad_game.sql`, enable Realtime for `squad_games` and `squad_messages`. Full guide: `README_BN.md` (Bangla) and `docs/multiplayer.md`.

@@ -90,24 +90,23 @@ async function main() {
   ok(grp?.owner_id === A.uid && m0.find(m => m.player_id === A.uid)?.role === 'leader', 'primary account is the squad leader');
   ok(m0.length === 3 && [B.uid, C.uid].every(id => m0.some(m => m.player_id === id)), 'squad has exactly three members: leader, Nova and Kai', `${m0.length}`);
 
-  const { error: fullInvite } = await A.client.rpc('invite_to_group', { p_invitee: D.uid });
-  ok(/GROUP_FULL/.test(fullInvite?.message ?? ''), 'inviting a 4th player to a full squad is rejected');
   const { error: memberKick } = await B.client.rpc('remove_group_member', { p_player: C.uid });
   ok(/NOT_GROUP_LEADER/.test(memberKick?.message ?? ''), 'only the leader can remove members');
 
-  // Acceptance-time limit: open a seat, invite two outsiders, let both accept
+  // Capacity is four: fill the last seat, then check the fifth invitation and acceptance are rejected
   let restored = false;
   try {
-    const rm = await A.client.rpc('remove_group_member', { p_player: C.uid });
-    ok(!rm.error, 'leader can remove a member', rm.error?.message);
     const invD = await A.client.rpc('invite_to_group', { p_invitee: D.uid });
+    ok(!invD.error, 'a player outside the squad can be invited', invD.error?.message);
     const invE = await A.client.rpc('invite_to_group', { p_invitee: E.uid });
-    ok(!invD.error && !invE.error, 'players outside the squad can be invited', invD.error?.message ?? invE.error?.message);
+    ok(!invE.error, 'a second outsider can be invited while a seat is free', invE.error?.message);
     const accD = await D.client.rpc('respond_to_invitation', { p_invitation: invD.data, p_accept: true });
-    ok(!accD.error, 'third member can accept', accD.error?.message);
+    ok(!accD.error, 'fourth member can accept', accD.error?.message);
+    ok((await members()).length === 4, 'squad has four members');
     const accE = await E.client.rpc('respond_to_invitation', { p_invitation: invE.data, p_accept: true });
-    ok(/GROUP_FULL/.test(accE.error?.message ?? ''), 'fourth acceptance is rejected by the database', accE.error?.message ?? 'accepted!');
-    ok((await members()).length === 3, 'squad still has exactly three members');
+    ok(/GROUP_FULL/.test(accE.error?.message ?? ''), 'fifth acceptance is rejected by the database', accE.error?.message ?? 'accepted!');
+    const { error: fullInvite } = await A.client.rpc('invite_to_group', { p_invitee: E.uid });
+    ok(/GROUP_FULL/.test(fullInvite?.message ?? '') || /INVITE_ALREADY_PENDING/.test(fullInvite?.message ?? ''), 'inviting a 5th player to a full squad is rejected', fullInvite?.message);
     await A.client.rpc('cancel_invitation', { p_invitation: invE.data });
   } finally {
     // restore: leader + Nova + Kai

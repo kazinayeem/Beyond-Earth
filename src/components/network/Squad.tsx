@@ -3,12 +3,15 @@
 import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Crown, UserPlus, LogOut, UserMinus, Rocket, Check, X, Loader2, Users, Plus, Clock, Shield } from 'lucide-react';
+import { Crown, UserPlus, LogOut, UserMinus, Rocket, Check, X, Loader2, Users, Plus, Clock, Shield, DoorOpen, Radio } from 'lucide-react';
 import {
   createGroupAction, respondInvitationAction, cancelInvitationAction, leaveGroupAction, removeMemberAction,
-  transferLeadershipAction, createGroupMissionAction, setCrewRoleAction,
+  transferLeadershipAction,
 } from '@/app/actions/network';
-import { CREW_ROLES, crewRole } from '@/lib/network/crewRoles';
+import { CREW_ROLE_IDS, SQUAD_MAX_MEMBERS, SQUAD_MIN_MEMBERS, crewRole } from '@/lib/network/crewRoles';
+import { effectiveRoles } from '@/lib/squad/permissions';
+import { CrewPlanner } from './CrewPlanner';
+import { RoleChips, RoleInfoButton } from './RoleInfo';
 import { MISSIONS } from '@/data/missions';
 import { AVATAR_COLORS, AVATAR_SHAPES } from '@/lib/network/avatars';
 import type { getSquadDashboard, InvitationRow } from '@/lib/network/queries';
@@ -80,7 +83,7 @@ export function CreateSquad() {
   return (
     <section className="rounded-2xl glass-panel p-5 sm:p-6" aria-label="Create a squad">
       <h2 className="font-display text-xl text-white">Form a squad</h2>
-      <p className="text-sm text-slate-400 mt-1 mb-5">Squads hold up to 3 pilots. You lead the squad you create and can invite others once it exists.</p>
+      <p className="text-sm text-slate-400 mt-1 mb-5">Squads hold 2–4 pilots. You lead the squad you create and can invite others once it exists.</p>
       <form className="grid md:grid-cols-2 gap-5" onSubmit={e => { e.preventDefault(); run(() => createGroupAction({ name, description, emblem, specialization: spec }), () => sounds.playSystemOn()); }}>
         <div className="space-y-4">
           <div>
@@ -125,19 +128,12 @@ export function CreateSquad() {
 export function SquadDashboard({ d }: { d: FullDash }) {
   const { pending, error, run } = useAction();
   const [confirmLeave, setConfirmLeave] = useState(false);
-  const [missionPick, setMissionPick] = useState(MISSIONS[0].id);
   const g = d.group;
   const isLeader = g.owner_id === d.uid;
-  const slots = [0, 1, 2].map(i => d.members[i] ?? null);
-  const flownBy = new Map<string, Set<string>>();
-  d.results.forEach(r => {
-    const gm = r.group_mission_id;
-    if (!gm) return;
-    if (!flownBy.has(gm)) flownBy.set(gm, new Set());
-    flownBy.get(gm)!.add(r.player_id);
-  });
+  const slots = Array.from({ length: SQUAD_MAX_MEMBERS }, (_, i) => d.members[i] ?? null);
   const nameOf = (id: string) => d.members.find(m => m.player_id === id)?.profile.display_name ?? 'Former member';
   const missionName = (id: string) => MISSIONS.find(m => m.id === id)?.name ?? id;
+  const enough = d.members.length >= SQUAD_MIN_MEMBERS;
 
   return (
     <div className="space-y-5">
@@ -168,81 +164,83 @@ export function SquadDashboard({ d }: { d: FullDash }) {
 
       {error && <Notice tone="error">{error}</Notice>}
 
-      {/* Three crew slots */}
+      {/* Crew slots (up to 4) */}
       <section aria-label="Crew">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="font-display text-lg text-white">Crew <span className="text-slate-500 text-sm">{d.members.length}/3</span></h2>
-          {d.members.length < 3 && <Link href="/players" className="cta-secondary rounded-xl px-3.5 py-2 text-sm text-cyan-100 inline-flex items-center gap-2"><UserPlus className="w-4 h-4" /> Invite pilot</Link>}
+          <h2 className="font-display text-lg text-white">Crew <span className="text-slate-500 text-sm">{d.members.length}/{SQUAD_MAX_MEMBERS}</span></h2>
+          {d.members.length < SQUAD_MAX_MEMBERS && <Link href="/players" className="cta-secondary rounded-xl px-3.5 py-2 text-sm text-cyan-100 inline-flex items-center gap-2"><UserPlus className="w-4 h-4" /> Invite pilot</Link>}
         </div>
-        <ul className="grid sm:grid-cols-3 gap-3">
-          {slots.map((m, i) => m ? (
-            <li key={m.player_id} className="crew-slot rounded-2xl p-5 flex flex-col items-center text-center">
-              <PlayerAvatar avatar={m.profile.avatar} size={72} ring={m.role === 'leader'} />
-              <div className="mt-3 flex items-center gap-1.5 text-white font-medium">
-                {m.role === 'leader' && <Crown className="w-4 h-4 text-amber-300" aria-label="Leader" />}{m.profile.display_name}
-              </div>
-              <Link href={`/players/${m.profile.player_code}`} className="text-xs font-mono text-slate-400 hover:text-cyan-200">{m.profile.player_code}</Link>
-              <CrewRoleBadge
-                role={m.crew_role}
-                editable={isLeader || m.player_id === d.uid}
-                disabled={pending}
-                name={m.profile.display_name}
-                onChange={r => run(() => setCrewRoleAction(m.player_id, r))}
-              />
-              <div className="mt-3 grid grid-cols-2 gap-2 w-full text-center">
-                <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Science</div><div className="font-mono text-sm">{m.stats?.science_total ?? '—'}</div></div>
-                <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Missions</div><div className="font-mono text-sm">{m.stats?.missions_completed ?? '—'}</div></div>
-              </div>
-              {isLeader && m.player_id !== d.uid && (
-                <div className="mt-3 flex gap-1.5">
-                  <button type="button" disabled={pending} onClick={() => run(() => transferLeadershipAction(m.player_id))} className="text-xs px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 inline-flex items-center gap-1"><Shield className="w-3.5 h-3.5" /> Make leader</button>
-                  <button type="button" disabled={pending} onClick={() => run(() => removeMemberAction(m.player_id))} className="text-xs px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-200 inline-flex items-center gap-1"><UserMinus className="w-3.5 h-3.5" /> Remove</button>
+        <ul className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {slots.map((m, i) => {
+            if (!m) {
+              return (
+                <li key={`empty-${i}`} className="rounded-2xl border border-dashed border-white/15 p-5 flex flex-col items-center justify-center text-center min-h-[250px]">
+                  <div className="w-[72px] h-[72px] rounded-full border border-dashed border-white/20 flex items-center justify-center text-slate-500"><Users className="w-6 h-6" /></div>
+                  <div className="mt-3 text-sm text-slate-400">{i < SQUAD_MIN_MEMBERS ? 'Needed for missions' : 'Open seat'}</div>
+                  <Link href="/players" className="mt-2 text-xs text-cyan-300 hover:text-cyan-100">Find a pilot</Link>
+                </li>
+              );
+            }
+            const eff = [...effectiveRoles(m.player_id, d.members, CREW_ROLE_IDS)];
+            const covering = m.role === 'leader' ? eff.filter(r => !m.crew_roles.includes(r)) : [];
+            const mine = m.player_id === d.uid;
+            return (
+              <li key={m.player_id} className="crew-slot rounded-2xl p-5 flex flex-col items-center text-center">
+                <PlayerAvatar avatar={m.profile.avatar} size={72} ring={m.role === 'leader'} />
+                <div className="mt-3 flex items-center gap-1.5 text-white font-medium">
+                  {m.role === 'leader' && <Crown className="w-4 h-4 text-amber-300" aria-label="Leader" />}{m.profile.display_name}{mine && <span className="text-[10px] text-cyan-300">(you)</span>}
                 </div>
-              )}
-            </li>
-          ) : (
-            <li key={`empty-${i}`} className="rounded-2xl border border-dashed border-white/15 p-5 flex flex-col items-center justify-center text-center min-h-[220px]">
-              <div className="w-[72px] h-[72px] rounded-full border border-dashed border-white/20 flex items-center justify-center text-slate-500"><Users className="w-6 h-6" /></div>
-              <div className="mt-3 text-sm text-slate-400">Open seat</div>
-              <Link href="/players" className="mt-2 text-xs text-cyan-300 hover:text-cyan-100">Find a pilot</Link>
-            </li>
-          ))}
+                <Link href={`/players/${m.profile.player_code}`} className="text-xs font-mono text-slate-400 hover:text-cyan-200">{m.profile.player_code}</Link>
+
+                <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+                  <span>{eff.length} role{eff.length === 1 ? '' : 's'}</span>
+                  <RoleInfoButton roleIds={eff} title={`${m.profile.display_name} · ${eff.length} role${eff.length === 1 ? '' : 's'}`} label={`Role details for ${m.profile.display_name}`} />
+                </div>
+                <RoleChips roleIds={m.crew_roles} covering={covering} max={3} />
+
+                <div className="mt-3 grid grid-cols-2 gap-2 w-full text-center">
+                  <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Science</div><div className="font-mono text-sm">{m.stats?.science_total ?? '—'}</div></div>
+                  <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Missions</div><div className="font-mono text-sm">{m.stats?.missions_completed ?? '—'}</div></div>
+                </div>
+                {isLeader && !mine && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+                    <button type="button" disabled={pending} onClick={() => run(() => transferLeadershipAction(m.player_id))} className="text-xs px-2.5 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 inline-flex items-center gap-1"><Shield className="w-3.5 h-3.5" /> Make leader</button>
+                    <button type="button" disabled={pending} onClick={() => run(() => removeMemberAction(m.player_id))} className="text-xs px-2.5 py-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-200 inline-flex items-center gap-1"><UserMinus className="w-3.5 h-3.5" /> Remove</button>
+                  </div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       </section>
 
+      <CrewPlanner key={d.members.map(m => `${m.player_id}:${m.crew_roles.join('.')}`).join('|')} members={d.members} uid={d.uid} isLeader={isLeader} />
+
       <div className="grid lg:grid-cols-2 gap-5">
-        {/* Squad missions */}
-        <section className="rounded-2xl glass-panel p-5" aria-label="Squad missions">
-          <h2 className="font-display text-lg text-white">Squad missions</h2>
-          <p className="text-sm text-slate-400 mt-1">Open a mission for the squad. Each pilot flies it on their own schedule; when two or more succeed, every successful pilot earns a 10% credit bonus.</p>
-          <div className="mt-3 flex gap-2">
-            <label className="sr-only" htmlFor="gm-pick">Mission</label>
-            <select id="gm-pick" value={missionPick} onChange={e => setMissionPick(e.target.value)} className="input-field !py-2">
-              {MISSIONS.map(m => <option key={m.id} value={m.id}>{m.name} · {m.difficulty}</option>)}
-            </select>
-            <button type="button" disabled={pending} onClick={() => run(() => createGroupMissionAction(missionPick), () => sounds.playRadioIn())}
-              className="cta-primary rounded-xl px-4 text-sm font-semibold text-slate-950 whitespace-nowrap">Open</button>
-          </div>
-          <ul className="mt-4 space-y-2">
-            {d.missions.length === 0 && <li className="text-sm text-slate-500">No squad missions yet.</li>}
-            {d.missions.map(gm => {
-              const flown = flownBy.get(gm.id) ?? new Set<string>();
-              const mine = flown.has(d.uid);
-              const open = gm.status === 'open' && new Date(gm.closes_at) > new Date();
+        {/* Mission rooms */}
+        <section className="rounded-2xl glass-panel p-5" aria-label="Squad mission rooms">
+          <h2 className="font-display text-lg text-white">Squad mission rooms</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            The whole squad flies <em>one</em> mission together in a shared room. Each crew member only controls the jobs of their own roles, and the live squad chat is always open.
+            {!enough && <span className="text-amber-200"> You need at least {SQUAD_MIN_MEMBERS} crew members to start.</span>}
+          </p>
+          <ul className="mt-3 space-y-2">
+            {MISSIONS.map(m => {
+              const active = d.games.find(x => x.mission_id === m.id && x.status === 'active');
+              const done = d.games.find(x => x.mission_id === m.id && x.status === 'completed');
               return (
-                <li key={gm.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white/[0.03] p-3">
+                <li key={m.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-white/[0.03] p-3">
                   <Rocket className="w-4 h-4 text-cyan-300" aria-hidden />
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white">{missionName(gm.mission_id)}</div>
+                    <div className="text-sm text-white">{m.name} <span className="text-[11px] text-slate-500">· {m.difficulty}</span></div>
                     <div className="text-xs text-slate-400 flex items-center gap-2">
-                      <span>{flown.size}/{d.members.length} flown</span>
-                      {open ? <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" />{timeLeft(gm.closes_at)}</span> : <span>Closed</span>}
+                      {active ? <span className="inline-flex items-center gap-1 text-emerald-300"><Radio className="w-3 h-3 animate-pulse" /> Live · {(active.stage ?? 'briefing').replace('_', ' ')}</span>
+                        : done ? <span>Last flight complete</span> : <span>No room open</span>}
                     </div>
                   </div>
-                  {open && !mine && (
-                    <Link href={`/?view=briefing&mission=${gm.mission_id}&gm=${gm.id}`} className="cta-secondary rounded-lg px-3 py-1.5 text-sm text-cyan-100">Fly now</Link>
-                  )}
-                  {mine && <span className="text-xs text-emerald-300">Flown</span>}
+                  <Link href={`/squad/${g.id}/${m.id}`} className={`rounded-lg px-3 py-1.5 text-sm inline-flex items-center gap-1.5 ${active ? 'cta-primary text-slate-950 font-semibold' : 'cta-secondary text-cyan-100'}`}>
+                    <DoorOpen className="w-4 h-4" /> {active ? 'Join room' : isLeader ? 'Open room' : 'View room'}
+                  </Link>
                 </li>
               );
             })}
@@ -298,28 +296,5 @@ export function SquadDashboard({ d }: { d: FullDash }) {
         )}
       </div>
     </div>
-  );
-}
-
-/** A member's crew role. The leader (or the member themselves) can change it in place. */
-function CrewRoleBadge({ role, editable, disabled, name, onChange }: { role: string; editable: boolean; disabled: boolean; name: string; onChange: (r: string) => void }) {
-  const r = crewRole(role);
-  const Icon = r.icon;
-  if (!editable) {
-    return (
-      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-cyan-400/10 border border-cyan-400/25 px-2.5 py-1 text-[11px] text-cyan-100" title={r.blurb}>
-        <Icon className="w-3.5 h-3.5" aria-hidden /> {r.label}
-      </span>
-    );
-  }
-  return (
-    <span className="mt-2 relative inline-flex">
-      <Icon className="w-3.5 h-3.5 text-cyan-200 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" aria-hidden />
-      <select aria-label={`Crew role for ${name}`} value={r.id} disabled={disabled} onChange={e => onChange(e.target.value)}
-        className="appearance-none rounded-full bg-cyan-400/10 border border-cyan-400/25 hover:border-cyan-300/50 pl-7 pr-6 py-1 text-[11px] text-cyan-100 outline-none cursor-pointer">
-        {CREW_ROLES.map(x => <option key={x.id} value={x.id} className="bg-slate-900">{x.label}</option>)}
-      </select>
-      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-cyan-300/70 text-[9px] pointer-events-none" aria-hidden>▾</span>
-    </span>
   );
 }

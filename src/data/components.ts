@@ -468,3 +468,16 @@ export const SYNERGY_BONUSES: SynergyBonus[] = [
     description: 'Operating the authentic NASA Lunar Reconnaissance Orbiter payload suite delivers comprehensive polar scientific discoveries!'
   }
 ];
+
+/** Starter build loaded into a new mission (solo) or a new squad mission room. */
+export const DEFAULT_BUILD_IDS: string[] = [
+  'struct-light',
+  'cam-hires',
+  'inst-spectrometer',
+  'pwr-solar-adv',
+  'pwr-battery-std',
+  'comm-high-gain',
+  'prop-medium',
+  'therm-blanket',
+  'nav-imu',
+];
