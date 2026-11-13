@@ -27,7 +27,7 @@ export function CrewPlanner({ members, isLeader }: { members: Member[]; uid: str
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
 
-  const ids = members.map(m => m.player_id);
+  const ids = useMemo(() => members.map(m => m.player_id), [members]);
   const leader = members.find(m => m.role === 'leader')?.player_id ?? ids[0];
   const nameOf = (id: string) => members.find(m => m.player_id === id)?.profile.display_name ?? '—';
   const ownerOf = (role: string) => ids.find(id => draft[id]?.includes(role)) ?? '';

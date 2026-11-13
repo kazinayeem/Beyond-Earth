@@ -73,7 +73,9 @@ export function SquadHud() {
     const id = window.setTimeout(() => setNotice(null), 4200);
     return () => window.clearTimeout(id);
   }, [notice, setNotice]);
-  useEffect(() => { if (remote) setBudget(remote.budgetM); }, [remote?.budgetM]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Re-sync the local budget slider whenever the shared budget changes (adjust-state-during-render pattern)
+  const [budgetSrc, setBudgetSrc] = useState<number | null>(null);
+  if (remote && remote.budgetM !== budgetSrc) { setBudgetSrc(remote.budgetM); setBudget(remote.budgetM); }
 
   if (!squad || !remote) return null;
   const stage = remote.stage;

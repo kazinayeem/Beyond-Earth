@@ -93,8 +93,10 @@ export const LaunchSequenceScreen: React.FC = () => {
   const setScenario = (v: WxScenario) => { if (squad) void squadDo('launch.wx', { scenario: v }); else setSoloScenario(v); };
   const [showWx, setShowWx] = useState(false);
   const [lost, setLost] = useState(false);
+  const [lostCause, setLostCause] = useState('');
   const wx = useLaunchWeather(activeMission.id, scenario);
-  const wxRef = useRef(wx); wxRef.current = wx;
+  const wxRef = useRef(wx);
+  useEffect(() => { wxRef.current = wx; }, [wx]);
   const failAtRef = useRef<number | null>(null);
   const failCauseRef = useRef<string>('');
   const camApi = useRef<LaunchCameraApi>(null);
@@ -280,6 +282,7 @@ export const LaunchSequenceScreen: React.FC = () => {
       stageRef.current = 'lost';
       setStage('lost');
       setLost(true);
+      setLostCause(failCauseRef.current);
       sounds.stopLaunchAudio(0.2);
       sounds.say('Vehicle lost. Anomaly on ascent.', { interrupt: true });
       useGameStore.getState().setLaunchEnvironment({ failureReason: failCauseRef.current || 'Vehicle lost during ascent' });
@@ -399,7 +402,7 @@ export const LaunchSequenceScreen: React.FC = () => {
             <div className="px-6 py-4 rounded-2xl bg-rose-950/80 border border-rose-400/40 backdrop-blur-md text-center max-w-md">
               <div className="hud-label text-rose-300">Vehicle lost</div>
               <div className="mt-1 font-display text-xl text-white">Mission failed on ascent</div>
-              <div className="mt-1 text-sm text-rose-200/80">{failCauseRef.current}</div>
+              <div className="mt-1 text-sm text-rose-200/80">{lostCause}</div>
             </div>
           </div>
         )}

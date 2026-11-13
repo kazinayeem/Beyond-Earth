@@ -21,14 +21,15 @@ export function useLaunchWeather(missionId: string, scenario: WxScenario = 'live
   const [raw, setRaw] = useState<RawLaunchWeather | null>(null);
   const [space, setSpace] = useState<SpaceResp | null>(null);
   const [neo, setNeo] = useState<NeoResp | null>(null);
-  const [loading, setLoading] = useState(true);
   const [tick, setTick] = useState(0);
+  const fetchKey = `${site.id}|${missionId}|${tick}`;
+  const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const loading = loadedKey !== fetchKey;
 
   const refresh = useCallback(() => setTick(t => t + 1), []);
 
   useEffect(() => {
     let alive = true;
-    setLoading(true);
     (async () => {
       const [w, s, n] = await Promise.all([
         getJson<RawLaunchWeather>(`/api/nasa/weather?site=${site.id}`),
@@ -36,7 +37,7 @@ export function useLaunchWeather(missionId: string, scenario: WxScenario = 'live
         missionId === 'mission-03' ? getJson<NeoResp>('/api/nasa/neo') : Promise.resolve(null),
       ]);
       if (!alive) return;
-      setRaw(w); setSpace(s); setNeo(n); setLoading(false);
+      setRaw(w); setSpace(s); setNeo(n); setLoadedKey(`${site.id}|${missionId}|${tick}`);
     })();
     return () => { alive = false; };
   }, [site.id, missionId, tick]);

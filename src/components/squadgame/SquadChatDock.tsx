@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import { Minus, Send, Users } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
@@ -14,6 +14,11 @@ interface Mate { id: string; name: string; roles: string[] }
 
 const OPEN_KEY = 'beyond_earth_squad_chat_open';
 
+const noopSubscribe = () => () => {};
+function readStoredOpen(): boolean {
+  try { return localStorage.getItem(OPEN_KEY) === '1'; } catch { return false; /* storage unavailable */ }
+}
+
 /**
  * Floating squad chat on every page: a squad bubble bottom-right, click to open, minimise to go back.
  * Every message is stored in `squad_messages` and visible to the whole squad (and only the squad — RLS).
@@ -21,21 +26,24 @@ const OPEN_KEY = 'beyond_earth_squad_chat_open';
 export function SquadChatDock() {
   const { status, player } = useAuth();
   const pathname = usePathname();
-  const [groupId, setGroupId] = useState<string | null>(null);
+  const [loadedGroupId, setGroupId] = useState<string | null>(null);
   const [groupName, setGroupName] = useState('');
   const [mates, setMates] = useState<Mate[]>([]);
   const [msgs, setMsgs] = useState<Msg[]>([]);
-  const [open, setOpen] = useState(false);
+  const storedOpen = useSyncExternalStore(noopSubscribe, readStoredOpen, () => false);
+  const [openChoice, setOpen] = useState<boolean | null>(null);
+  const open = openChoice ?? storedOpen;
   const [unread, setUnread] = useState(0);
   const [text, setText] = useState('');
   const [err, setErr] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const openRef = useRef(open);
-  openRef.current = open;
+  useEffect(() => { openRef.current = open; }, [open]);
   const me = player?.id ?? null;
+  const canChat = isSupabaseConfigured && status === 'signedIn' && !!me;
+  const groupId = canChat ? loadedGroupId : null;
 
-  useEffect(() => { try { setOpen(localStorage.getItem(OPEN_KEY) === '1'); } catch { /* storage unavailable */ } }, []);
   const toggle = useCallback((v: boolean) => {
     setOpen(v);
     if (v) setUnread(0);
@@ -44,7 +52,7 @@ export function SquadChatDock() {
 
   // Which squad am I in? (re-checked when the route changes, e.g. after joining or leaving)
   useEffect(() => {
-    if (!isSupabaseConfigured || status !== 'signedIn' || !me) { setGroupId(null); return; }
+    if (!canChat) return;
     let alive = true;
     (async () => {
       const supabase = createClient();
@@ -65,7 +73,7 @@ export function SquadChatDock() {
       }));
     })();
     return () => { alive = false; };
-  }, [status, me, pathname]);
+  }, [canChat, me, pathname]);
 
   // History + live stream
   useEffect(() => {
