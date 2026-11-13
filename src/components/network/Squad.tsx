@@ -156,10 +156,10 @@ export function SquadDashboard({ d }: { d: FullDash }) {
       </section>
 
       <section aria-label="Squad statistics" className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatTile label="Science points" value={g.science_total.toLocaleString()} accent="text-violet-200" />
-        <StatTile label="Mission XP" value={g.xp_total.toLocaleString()} accent="text-cyan-200" />
-        <StatTile label="Squad credits" value={g.credits.toLocaleString()} accent="text-emerald-200" sub="Earned on squad missions" />
-        <StatTile label="Missions completed" value={g.missions_completed} />
+        <StatTile label="Science points" value={g.science_total.toLocaleString()} accent="text-violet-300" />
+        <StatTile label="Mission XP" value={g.xp_total.toLocaleString()} accent="text-cyan-300" />
+        <StatTile label="Squad credits" value={g.credits.toLocaleString()} accent="text-emerald-300" sub="Earned by the whole crew" />
+        <StatTile label="Missions completed" value={g.missions_completed} accent="text-amber-300" />
       </section>
 
       {error && <Notice tone="error">{error}</Notice>}
@@ -174,7 +174,7 @@ export function SquadDashboard({ d }: { d: FullDash }) {
           {slots.map((m, i) => {
             if (!m) {
               return (
-                <li key={`empty-${i}`} className="rounded-2xl border border-dashed border-white/15 p-5 flex flex-col items-center justify-center text-center min-h-[250px]">
+                <li key={`empty-${i}`} className="open-seat rounded-2xl border border-dashed border-white/20 p-5 flex flex-col items-center justify-center text-center min-h-[250px]">
                   <div className="w-[72px] h-[72px] rounded-full border border-dashed border-white/20 flex items-center justify-center text-slate-500"><Users className="w-6 h-6" /></div>
                   <div className="mt-3 text-sm text-slate-400">{i < SQUAD_MIN_MEMBERS ? 'Needed for missions' : 'Open seat'}</div>
                   <Link href="/players" className="mt-2 text-xs text-cyan-300 hover:text-cyan-100">Find a pilot</Link>
@@ -199,8 +199,8 @@ export function SquadDashboard({ d }: { d: FullDash }) {
                 <RoleChips roleIds={m.crew_roles} covering={covering} max={3} />
 
                 <div className="mt-3 grid grid-cols-2 gap-2 w-full text-center">
-                  <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Science</div><div className="font-mono text-sm">{m.stats?.science_total ?? '—'}</div></div>
-                  <div className="rounded-lg bg-white/[0.04] py-1.5"><div className="text-[10px] uppercase text-slate-500">Missions</div><div className="font-mono text-sm">{m.stats?.missions_completed ?? '—'}</div></div>
+                  <div className="rounded-lg bg-slate-900/80 border border-white/5 py-1.5"><div className="text-[10px] uppercase text-slate-400">Science</div><div className="font-mono text-sm text-violet-200">{m.stats?.science_total ?? '—'}</div></div>
+                  <div className="rounded-lg bg-slate-900/80 border border-white/5 py-1.5"><div className="text-[10px] uppercase text-slate-400">Missions</div><div className="font-mono text-sm text-amber-200">{m.stats?.missions_completed ?? '—'}</div></div>
                 </div>
                 {isLeader && !mine && (
                   <div className="mt-3 flex flex-wrap justify-center gap-1.5">

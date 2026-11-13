@@ -16,11 +16,12 @@ const flareRank = (c: string) => {
 export async function GET() {
   const start = ymd(daysAgo(7)); const end = ymd(new Date());
   const q = `startDate=${start}&endDate=${end}&api_key=${NASA_API_KEY}`;
-  const [flr, cme, gst] = await Promise.all([
-    getJson<Flr[]>(`https://api.nasa.gov/DONKI/FLR?${q}`, 900),
-    getJson<Cme[]>(`https://api.nasa.gov/DONKI/CME?${q}`, 900),
-    getJson<Gst[]>(`https://api.nasa.gov/DONKI/GST?${q}`, 900),
-  ]);
+  // api.nasa.gov proxies DONKI; when the proxy fails for a feed (it has returned 404 for FLR) or the
+  // DEMO_KEY is rate-limited, fall back to NASA CCMC's own DONKI web service, which needs no key.
+  const donki = async <T,>(type: 'FLR' | 'CME' | 'GST') =>
+    (await getJson<T>(`https://api.nasa.gov/DONKI/${type}?${q}`, 900)) ??
+    (await getJson<T>(`https://kauai.ccmc.gsfc.nasa.gov/DONKI/WS/get/${type}?startDate=${start}&endDate=${end}`, 900));
+  const [flr, cme, gst] = await Promise.all([donki<Flr[]>('FLR'), donki<Cme[]>('CME'), donki<Gst[]>('GST')]);
   const flares = (Array.isArray(flr) ? flr : [])
     .filter(f => f.classType)
     .map(f => ({ classType: f.classType as string, peakTime: f.peakTime ?? f.beginTime ?? '' }))

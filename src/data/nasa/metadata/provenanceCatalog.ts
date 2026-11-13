@@ -160,5 +160,25 @@ export const NASA_PROVENANCE_CATALOG: ProvenanceRecord[] = [
     dataType: 'telemetry',
     officialSourceUrl: 'https://www.nesdis.noaa.gov/our-satellites/currently-flying/joint-polar-satellite-system',
     notes: 'Provides 824 km Sun-Synchronous Orbit parameters (98.7° inclination, 101.4 min period) for global numerical weather prediction.'
+  },
+  {
+    title: 'Live Space Weather: Solar Flares, CMEs & Geomagnetic Storms',
+    datasetName: 'NASA DONKI API: /DONKI/FLR, /DONKI/CME, /DONKI/GST (last 7 days, live)',
+    mission: 'All missions (cruise risk)',
+    archive: 'NASA Open APIs (api.nasa.gov) / CCMC DONKI',
+    lastRetrieved: 'Live (cached 15 min)',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://api.nasa.gov/',
+    notes: 'Strongest flare class, CME count and peak Kp index set the space-weather level (quiet / active / storm), which adds 0, +3 or +6 risk points to every mission flight (half for Earth orbit, inside the magnetosphere).'
+  },
+  {
+    title: 'Live Near-Earth Asteroid Close Approaches',
+    datasetName: 'NASA NeoWs API: /neo/rest/v1/feed (today, live)',
+    mission: 'Asteroid Surveyor (101955 Bennu)',
+    archive: 'NASA Open APIs (api.nasa.gov) / JPL CNEOS',
+    lastRetrieved: 'Live (cached 1 h)',
+    dataType: 'telemetry',
+    officialSourceUrl: 'https://api.nasa.gov/',
+    notes: "Today's near-Earth objects: each potentially hazardous asteroid adds +1 risk point (max +3) to the Bennu asteroid mission, and the closest approach is shown in the launch weather panel."
   }
 ];
