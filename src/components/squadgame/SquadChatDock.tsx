@@ -43,6 +43,8 @@ export function SquadChatDock() {
   const me = player?.id ?? null;
   const canChat = isSupabaseConfigured && status === 'signedIn' && !!me;
   const groupId = canChat ? loadedGroupId : null;
+  // membership only changes on squad / players / notifications pages; skip re-querying on every other navigation
+  const membershipKey = /^\/(squad|players|notifications|profile)/.test(pathname ?? '') ? pathname : 'other';
 
   const toggle = useCallback((v: boolean) => {
     setOpen(v);
@@ -73,7 +75,7 @@ export function SquadChatDock() {
       }));
     })();
     return () => { alive = false; };
-  }, [canChat, me, pathname]);
+  }, [canChat, me, membershipKey]);
 
   // History + live stream
   useEffect(() => {

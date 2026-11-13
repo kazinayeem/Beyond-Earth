@@ -22,10 +22,10 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow: string; titl
 
 export function StatTile({ label, value, sub, accent = 'text-white' }: { label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) {
   return (
-    <div className="rounded-xl bg-white/[0.035] border border-white/[0.06] px-3.5 py-3">
+    <div className={`stat-tile rounded-xl pl-4 pr-3.5 py-3 ${accent}`}>
       <div className="hud-label">{label}</div>
-      <div className={`mt-1 font-mono tabular-nums text-xl ${accent}`}>{value}</div>
-      {sub && <div className="mt-0.5 text-[11px] text-slate-500">{sub}</div>}
+      <div className="mt-1 font-mono tabular-nums text-2xl font-semibold">{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-slate-400">{sub}</div>}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 
@@ -35,6 +36,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [player, setPlayer] = useState<PlayerSummary | null>(null);
   const [unread, setUnread] = useState(0);
   const [uid, setUid] = useState<string | null>(null);
+  const pathname = usePathname();
+  // undefined = not checked yet; lets sync() skip work when the session has not changed
+  const knownUid = useRef<string | null | undefined>(undefined);
 
   const load = useCallback(async (userId: string | null) => {
     if (!isSupabaseConfigured) return;
@@ -50,18 +54,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStatus('signedIn');
   }, []);
 
+  const apply = useCallback((userId: string | null, force = false) => {
+    if (!force && knownUid.current === userId) return;
+    knownUid.current = userId;
+    setUid(userId);
+    void load(userId);
+  }, [load]);
+
+  // Sign-in, sign-up and sign-out run as server actions: they set the auth cookies on the server, so the
+  // browser client never fires onAuthStateChange. Re-read the session from the cookies (local, no network)
+  // so the header and game see the new user without a page reload.
+  const sync = useCallback(async () => {
+    if (!isSupabaseConfigured) return;
+    const { data } = await createClient().auth.getSession();
+    apply(data.session?.user?.id ?? null);
+  }, [apply]);
+
   useEffect(() => {
     if (!isSupabaseConfigured) return;
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => { setUid(data.user?.id ?? null); load(data.user?.id ?? null); });
+    void sync();
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') {
-        setUid(session?.user?.id ?? null);
-        load(session?.user?.id ?? null);
-      }
+      if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') apply(session?.user?.id ?? null);
+      else if (event === 'USER_UPDATED') apply(session?.user?.id ?? null, true);
     });
-    return () => sub.subscription.unsubscribe();
-  }, [load]);
+    // another tab signed in or out
+    const onVisible = () => { if (document.visibilityState === 'visible') void sync(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { sub.subscription.unsubscribe(); document.removeEventListener('visibilitychange', onVisible); };
+  }, [apply, sync]);
+
+  // a server-action redirect (login → /profile, logout → /) changes the route without remounting this provider
+  useEffect(() => { void sync(); }, [pathname, sync]);
 
   // Live notification badge (Realtime honours the RLS policy: only own rows arrive)
   useEffect(() => {

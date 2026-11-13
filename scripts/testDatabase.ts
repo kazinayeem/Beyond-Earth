@@ -219,7 +219,12 @@ async function main() {
   const bonuses = await q<{ squad_bonus: number }>(`select squad_bonus from public.mission_results where group_mission_id = $1`, [gm]);
   ok(bonuses.length === 2 && bonuses.every(b => b.squad_bonus === 400), 'bonus applied exactly once to each successful member');
   const g = (await q<{ missions_completed: number; credits: number }>(`select * from public.groups where id = $1`, [grp.id]))[0];
-  ok(g.missions_completed === 2 && g.credits === 8800, `squad totals accumulate (${g.missions_completed} missions, ${g.credits} credits)`);
+  // 2 squad successes (2 × 4000 + 2 × 400 bonus) + Ana's 2 earlier solo flights while in the squad (1000 + 1250)
+  ok(g.missions_completed === 4 && g.credits === 11050, `squad totals include squad and solo flights (${g.missions_completed} missions, ${g.credits} credits)`);
+  const soloTagged = await q<{ group_id: string | null; group_mission_id: string | null }>(`select group_id, group_mission_id from public.mission_results where run_id = $1`, [run1]);
+  ok(soloTagged[0].group_id === grp.id && soloTagged[0].group_mission_id === null, 'solo result is tagged with the squad but is not a squad mission');
+  const anaStats = (await q<{ group_missions_completed: number }>(`select group_missions_completed from public.player_statistics where player_id = $1`, [ana]))[0];
+  ok(anaStats.group_missions_completed === 1, 'solo flights do not count as squad missions for the pilot');
   await as(ben);
   ok(await fails(`select public.start_mission('mission-03', $1)`, [gm], /ALREADY_FLOWN/), 'cannot fly the same squad mission twice');
   ok((await q(`select * from public.mission_results where player_id = $1`, [ana])).length >= 1, 'squad mates can see each other\'s squad results');
