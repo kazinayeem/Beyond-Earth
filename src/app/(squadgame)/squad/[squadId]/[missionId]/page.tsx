@@ -36,7 +36,7 @@ export default async function SquadMissionRoom({ params, searchParams }: {
   const here = `/squad/${squadId}/${missionId}`;
 
   const uid = await getVerifiedUserId();
-  if (!uid) redirect(`/login?next=${encodeURIComponent(here)}&reason=mission`);
+  if (!uid) redirect(`/join?next=${encodeURIComponent(here)}&reason=mission`);
 
   const mission = MISSIONS.find(m => m.id === missionId);
   if (!mission) notFound();

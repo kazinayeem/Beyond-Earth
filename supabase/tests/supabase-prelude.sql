@@ -27,3 +27,9 @@ create or replace function auth.uid() returns uuid language sql stable as $$
   select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
 grant execute on function auth.uid() to anon, authenticated, service_role;
+
+-- pgcrypto lives in the "extensions" schema on Supabase; PGlite has no pgcrypto, so stub the two calls
+-- public.join_game() uses (the test only checks that a hash is stored, not bcrypt itself).
+create schema if not exists extensions;
+create or replace function extensions.gen_salt(text) returns text language sql immutable as $$ select 'test-salt' $$;
+create or replace function extensions.crypt(text, text) returns text language sql immutable as $$ select 'hash:' || md5($1 || $2) $$;

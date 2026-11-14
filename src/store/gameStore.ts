@@ -1028,7 +1028,7 @@ export const useGameStore = create<GameState>((set, get) => {
       }
       if (!debriefResult) return;
       if (!runId) {
-        set({ onlineResult: { state: 'offline', reason: runError ?? 'Not signed in — result kept on this device only.' } });
+        set({ onlineResult: { state: 'offline', reason: runError ?? 'Not joined with a username — result kept on this device only.' } });
         return;
       }
       set({ onlineResult: { state: 'pending' } });

@@ -15,7 +15,7 @@ const SUMMARY: Record<SystemState, string> = {
   unreachable: "Can't reach the Supabase project.",
   migration_missing: 'Connected, but the multiplayer migrations have not been applied.',
   permission_denied: 'Connected, but the database refused access. The grants from the migrations are missing or were changed.',
-  auth_unavailable: 'Database is ready, but Supabase Auth is not accepting email sign-ins.',
+  auth_unavailable: 'Database is ready, but Supabase Auth is not accepting username joins (enable the Email provider).',
   schema_incomplete: 'Connected, but the multiplayer schema is incomplete.',
   operational: 'All systems operational.',
 };
@@ -86,8 +86,8 @@ export async function getSystemHealth(): Promise<SystemHealth> {
     const res = await fetch(`${SUPABASE_URL}/auth/v1/settings`, { headers: { apikey: SUPABASE_PUBLISHABLE_KEY }, cache: 'no-store' });
     const json = res.ok ? ((await res.json()) as { external?: { email?: boolean } }) : null;
     auth = json?.external?.email
-      ? { id: 'auth', label: 'Authentication ready', state: 'ok', detail: 'Email sign-in is enabled.' }
-      : { id: 'auth', label: 'Authentication ready', state: 'fail', detail: res.ok ? 'Email sign-in is disabled in Supabase Auth settings.' : `Auth service answered ${res.status}.` };
+      ? { id: 'auth', label: 'Authentication ready', state: 'ok', detail: 'Username join is available (Supabase email provider is on).' }
+      : { id: 'auth', label: 'Authentication ready', state: 'fail', detail: res.ok ? 'Username join needs the Email provider enabled in Supabase Auth settings.' : `Auth service answered ${res.status}.` };
   } catch {
     auth = { id: 'auth', label: 'Authentication ready', state: 'fail', detail: "Can't reach the Supabase Auth service." };
   }
@@ -97,13 +97,13 @@ export async function getSystemHealth(): Promise<SystemHealth> {
   const { data: claims } = await supabase.auth.getClaims();
   const uid = claims?.claims?.sub ?? null;
   if (!uid) {
-    profile = { id: 'profile', label: 'Player profile ready', state: 'skip', detail: 'Sign in to check your profile.' };
+    profile = { id: 'profile', label: 'Player profile ready', state: 'skip', detail: 'Join the game to check your profile.' };
   } else if (multiplayer.state !== 'ok') {
     profile = { id: 'profile', label: 'Player profile ready', state: 'skip', detail: 'Waiting for the multiplayer schema.' };
   } else {
     const { data: row, error: pErr } = await supabase.from('profiles').select('player_code').eq('id', uid).maybeSingle();
     profile = row
-      ? { id: 'profile', label: 'Player profile ready', state: 'ok', detail: `Signed in as ${row.player_code}.` }
+      ? { id: 'profile', label: 'Player profile ready', state: 'ok', detail: `Playing as ${row.player_code}.` }
       : {
           id: 'profile', label: 'Player profile ready', state: 'fail',
           detail: pErr

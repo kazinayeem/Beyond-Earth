@@ -38,7 +38,7 @@ export function PlayerSearch({ inSquad, signedIn }: { inSquad: boolean; signedIn
         <input autoFocus value={q} onChange={e => setQ(e.target.value)} maxLength={40}
           placeholder="Search MC-7K9X2P, @username or name" className="input-field !pl-12 !py-3.5 !text-base" />
       </label>
-      {!signedIn ? <Notice><Link href="/login?next=/players" className="underline">Log in</Link> to invite pilots to a squad.</Notice>
+      {!signedIn ? <Notice><Link href="/join?next=/players" className="underline">Join the game</Link> with a username to invite pilots to a squad.</Notice>
         : !inSquad && <Notice>Create a squad before sending invitations. <Link href="/squad" className="underline">Go to squad</Link></Notice>}
       {err && <Notice tone="error">{err}</Notice>}
       <div aria-live="polite">
@@ -46,7 +46,7 @@ export function PlayerSearch({ inSquad, signedIn }: { inSquad: boolean; signedIn
           <ul className="space-y-2">{[0, 1, 2].map(i => <li key={i} className="flex items-center gap-3 rounded-2xl glass-panel p-3"><Skeleton className="w-11 h-11 rounded-full" /><div className="flex-1 space-y-2"><Skeleton className="h-3.5 w-40" /><Skeleton className="h-3 w-24" /></div></li>)}</ul>
         )}
         {!loading && rows === null && (
-          <div className="rounded-2xl glass-panel"><EmptyState icon={<Users className="w-6 h-6" />} title="Find fellow pilots">Type at least 2 characters. Exact player IDs always match first. Emails are never searchable.</EmptyState></div>
+          <div className="rounded-2xl glass-panel"><EmptyState icon={<Users className="w-6 h-6" />} title="Find fellow pilots">Type at least 2 characters. Search by username, display name or player ID. Exact player IDs always match first.</EmptyState></div>
         )}
         {!loading && rows && rows.length === 0 && !err && (
           <div className="rounded-2xl glass-panel"><EmptyState icon={<SearchX className="w-6 h-6" />} title="No pilots found">Check the player ID — it looks like MC- followed by 6 characters.</EmptyState></div>

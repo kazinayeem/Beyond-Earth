@@ -14,7 +14,7 @@ import { sounds } from '@/lib/sound';
 import { useAuth } from '@/components/network/AuthProvider';
 import { PlayerAvatar } from '@/components/network/PlayerAvatar';
 import { rankProgress } from '@/lib/network/avatars';
-import { signOutAction } from '@/app/actions/auth';
+import { leaveUsernameAction } from '@/app/actions/auth';
 
 interface TopNavProps {
   onOpenTutorial?: () => void;
@@ -156,9 +156,9 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
                   <MenuLink href="/?view=data_explorer" Icon={Database} label="NASA data" onClick={(e) => { setMenuOpen(false); goGame('data_explorer')(e); }} />
                   <MenuLink href="/?view=data_sources" Icon={ShieldCheck} label="Data sources" onClick={(e) => { setMenuOpen(false); goGame('data_sources')(e); }} />
                   {onOpenTutorial && <MenuButton Icon={HelpCircle} label="How to play" onClick={() => { setMenuOpen(false); onOpenTutorial(); }} />}
-                  <form action={signOutAction} className="border-t border-white/5 mt-1 pt-1">
+                  <form action={leaveUsernameAction} className="border-t border-white/5 mt-1 pt-1">
                     <button type="submit" role="menuitem" className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-rose-200 hover:bg-rose-500/10">
-                      <LogOut className="w-4 h-4" /> Sign out
+                      <LogOut className="w-4 h-4" /> Leave @{player.username}
                     </button>
                   </form>
                 </div>
@@ -166,8 +166,7 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
             </div>
           ) : configured && status === 'signedOut' ? (
             <div className="hidden sm:flex items-center gap-1.5">
-              <Link href="/login" className="px-3 py-1.5 rounded-lg text-[13px] text-slate-300 hover:text-white hover:bg-white/[0.06]">Log in</Link>
-              <Link href="/register" className="cta-primary px-3 py-1.5 rounded-lg text-[13px] font-semibold text-slate-950">Create account</Link>
+              <Link href="/join" className="cta-primary px-3 py-1.5 rounded-lg text-[13px] font-semibold text-slate-950">Join game</Link>
             </div>
           ) : null}
 
@@ -186,12 +185,14 @@ export const TopNavHeader: React.FC<TopNavProps> = ({ onOpenTutorial, onOpenAchi
             </Link>
           ))}
           {status === 'signedIn' ? (
-            <Link href="/profile" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/[0.05]"><User className="w-4 h-4 text-cyan-300" /> My profile</Link>
-          ) : configured ? (
             <>
-              <Link href="/login" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/[0.05]">Log in</Link>
-              <Link href="/register" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-cyan-200 hover:bg-white/[0.05]">Create account</Link>
+              <Link href="/profile" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/[0.05]"><User className="w-4 h-4 text-cyan-300" /> My profile</Link>
+              <form action={leaveUsernameAction}>
+                <button type="submit" className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-rose-200 hover:bg-rose-500/10 text-left"><LogOut className="w-4 h-4" /> Leave{player ? ` @${player.username}` : ''}</button>
+              </form>
             </>
+          ) : configured ? (
+            <Link href="/join" className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-cyan-200 hover:bg-white/[0.05]">Join game</Link>
           ) : null}
           {onOpenSettings && (
             <button type="button" onClick={() => { setMobileOpen(false); onOpenSettings(); }} className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-sm text-slate-300 hover:bg-white/[0.05] text-left"><Sliders className="w-4 h-4 text-cyan-300" /> Settings</button>

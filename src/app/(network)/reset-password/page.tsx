@@ -1,16 +1,12 @@
 import { redirect } from 'next/navigation';
-import { AuthFrame } from '@/components/network/AuthFrame';
-import { ResetForm } from '@/components/network/AuthForms';
-import { getVerifiedUserId } from '@/lib/supabase/server';
+import { safeNext } from '@/lib/network/safeNext';
 
-export const metadata = { title: 'New password', robots: { index: false, follow: false } };
-
-export default async function ResetPasswordPage() {
-  // The recovery link signs the user in with a short-lived session
-  if (!(await getVerifiedUserId())) redirect('/forgot-password');
-  return (
-    <AuthFrame eyebrow="Account recovery" title="Choose a new password" subtitle="Your recovery session is active for a few minutes.">
-      <ResetForm />
-    </AuthFrame>
-  );
+/** Email/password sign-in was replaced by username-only "Join game". Old links land there. */
+export default async function LegacyAuthRedirect({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const params = new URLSearchParams();
+  if (sp.next) params.set('next', safeNext(sp.next, '/?view=missions'));
+  if (sp.reason) params.set('reason', sp.reason);
+  const q = params.toString();
+  redirect(q ? `/join?${q}` : '/join');
 }

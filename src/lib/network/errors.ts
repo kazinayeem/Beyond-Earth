@@ -1,6 +1,6 @@
 /** Maps database error codes raised by the RPC layer to player-facing messages. */
 const MESSAGES: Record<string, string> = {
-  NOT_AUTHENTICATED: 'Please sign in to continue.',
+  NOT_AUTHENTICATED: 'Join the game with a username to continue.',
   ALREADY_IN_GROUP: 'You are already in a squad. Leave it first.',
   NOT_IN_GROUP: 'Create or join a squad first.',
   NOT_GROUP_LEADER: 'Only the squad leader can do that.',

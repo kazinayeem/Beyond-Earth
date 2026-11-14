@@ -297,6 +297,34 @@ async function main() {
   ok(await fails(`select public.ensure_my_profile()`, [], /permission denied/), 'visitors cannot call ensure_my_profile');
 
   // ── Health check & re-run guard ──
+  // ── Username join (no email / password) ──
+  console.log('[username join]');
+  const secret = 'x'.repeat(32);
+  await as(null);
+  const j1 = (await q<{ r: { login: string; created: boolean } }>(`select public.join_game('Rookie_One', $1, 'new') as r`, [secret]))[0].r;
+  ok(j1.created === true && j1.login === 'rookie_one@players.beyond-earth.invalid', 'join with a new username creates the pilot');
+  await asAdmin();
+  const rookie = (await q<{ id: string; username: string }>(`select id, username from public.profiles where username = 'rookie_one'`))[0];
+  ok(!!rookie, 'new pilot gets a profile with exactly that username');
+  ok((await q<{ encrypted_password: string }>(`select encrypted_password from auth.users where id = $1`, [rookie.id]))[0].encrypted_password.startsWith('hash:'), 'only a hash of the join secret is stored');
+  await as(null);
+  ok(await fails(`select public.join_game('rookie_one', $1, 'new')`, [secret], /USERNAME_TAKEN/), 'creating a username that exists is refused');
+  ok(await fails(`select public.join_game('nobody_here', $1, 'existing')`, [secret], /USERNAME_NOT_FOUND/), 'joining an unknown username is refused');
+  ok(await fails(`select public.join_game('a b', $1, 'auto')`, [secret], /INVALID_USERNAME/), 'invalid usernames are rejected');
+  ok(await fails(`select public.join_game('rookie_one', 'short', 'auto')`, [], /INVALID_PAYLOAD/), 'weak join secrets are rejected');
+  const j2 = (await q<{ r: { login: string; created: boolean } }>(`select public.join_game('ROOKIE_ONE', $1, 'existing') as r`, [secret]))[0].r;
+  ok(j2.created === false && j2.login === j1.login, 'returning pilot joins with the same username (case-insensitive)');
+  const j3 = (await q<{ r: { login: string; created: boolean } }>(`select public.join_game('ana_orbit', $1, 'existing') as r`, [secret]))[0].r;
+  ok(j3.login === 'ana_orbit@players.beyond-earth.invalid', 'an earlier email account can join with its username');
+  await asAdmin();
+  ok((await q<{ email: string }>(`select email from auth.users where id = $1`, [ana]))[0].email === j3.login, 'old account now signs in with its username alias');
+  ok((await q<{ email: string }>(`select email from private.legacy_emails where user_id = $1`, [ana]))[0]?.email === 'ana@example.com', 'the old email is kept privately, not lost');
+  ok((await q(`select 1 from public.player_statistics where player_id = $1`, [ana])).length === 1, 'joining keeps all earlier progress (same player)');
+  await as(null);
+  ok(await fails(`select * from private.legacy_emails`, [], /permission denied/), 'visitors cannot read saved emails');
+  await as(ben);
+  ok(await fails(`select * from private.legacy_emails`, [], /permission denied/), 'players cannot read saved emails');
+
   console.log('[health]');
   await as(null);
   const h = (await q<{ h: { missing_tables: string[]; rls_disabled: string[]; signup_trigger: boolean; missions: number; achievements: number } }>(`select public.multiplayer_health() as h`))[0].h;

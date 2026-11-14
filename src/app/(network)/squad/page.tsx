@@ -30,8 +30,7 @@ export default async function SquadPage() {
             <h2 className="font-display text-xl text-white">Fly with up to three other pilots</h2>
             <p className="text-sm text-slate-400 mt-2">Squads fly one mission together in a shared room: each pilot holds several of the 20 crew roles, decides only their own part of the flight and talks to the crew in a live squad chat. Two or more successful members earn a 10% credit bonus.</p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <Link href="/register" className="cta-primary rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-950">Create account</Link>
-              <Link href="/login?next=/squad" className="cta-ghost rounded-xl px-5 py-2.5 text-sm text-slate-200">Log in</Link>
+              <Link href="/join?next=/squad&reason=squad" className="cta-primary rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-950">Join game</Link>
             </div>
           </section>
         )}
