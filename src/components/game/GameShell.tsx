@@ -63,7 +63,7 @@ export function GameShell({ squad }: { squad?: { ctx: SquadCtx; row: SquadGameRo
     if (!squad && configured && status === 'signedOut' && startedMission) {
       const missionId = useGameStore.getState().activeMission.id;
       useGameStore.getState().setScreen('briefing');
-      router.push(`/login?next=${encodeURIComponent(`/?view=briefing&mission=${missionId}`)}&reason=mission`);
+      router.push(`/join?next=${encodeURIComponent(`/?view=briefing&mission=${missionId}`)}&reason=mission`);
     }
   }, [configured, status, startedMission, router, squad]);
 

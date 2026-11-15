@@ -10,7 +10,7 @@ export const metadata = { title: 'My profile', robots: { index: false, follow: f
 
 export default async function ProfilePage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const uid = await getVerifiedUserIdSafe();
-  if (!uid) redirect('/login?next=/profile');
+  if (!uid) redirect('/join?next=/profile');
   const sp = await searchParams;
   let d = await getPlayerDossier({ id: uid });
   if (!d && (await ensureMyProfile())) d = await getPlayerDossier({ id: uid }); // repair a missing profile once
@@ -18,7 +18,6 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   return (
     <div className="mx-auto max-w-6xl px-4 py-6 sm:py-10 space-y-4">
       {sp.welcome && <Notice tone="ok">Welcome aboard, {d.profile.display_name}. Your permanent player ID is {d.profile.player_code}.</Notice>}
-      {sp.password && <Notice tone="ok">Password updated.</Notice>}
       <PlayerDossier d={d} editor={<ProfileEditor profile={d.profile} />} />
     </div>
   );

@@ -7,7 +7,7 @@ export const metadata = { title: 'Notifications', robots: { index: false, follow
 
 export default async function NotificationsPage() {
   const squad = await getSquadDashboard();
-  if (!squad) redirect('/login?next=/notifications');
+  if (!squad) redirect('/join?next=/notifications');
   const items = await getNotifications();
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:py-10">

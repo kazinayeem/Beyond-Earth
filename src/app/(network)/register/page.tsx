@@ -1,15 +1,12 @@
-import Link from 'next/link';
-import { AuthFrame } from '@/components/network/AuthFrame';
-import { RegisterForm } from '@/components/network/AuthForms';
-import { isGoogleEnabled } from '@/lib/network/authSettings';
+import { redirect } from 'next/navigation';
+import { safeNext } from '@/lib/network/safeNext';
 
-export const metadata = { title: 'Create account', description: 'Create a free pilot account, get your permanent MC player ID and start flying missions.' };
-
-export default async function RegisterPage() {
-  return (
-    <AuthFrame eyebrow="Pilot registration" title="Join Mission Control" subtitle="You will receive a permanent player ID like MC-7K9X2P."
-      footer={<>Already registered? <Link href="/login" className="text-cyan-300 hover:text-cyan-100">Sign in</Link></>}>
-      <RegisterForm googleEnabled={await isGoogleEnabled()} />
-    </AuthFrame>
-  );
+/** Email/password sign-in was replaced by username-only "Join game". Old links land there. */
+export default async function LegacyAuthRedirect({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const params = new URLSearchParams();
+  if (sp.next) params.set('next', safeNext(sp.next, '/?view=missions'));
+  if (sp.reason) params.set('reason', sp.reason);
+  const q = params.toString();
+  redirect(q ? `/join?${q}` : '/join');
 }

@@ -31,13 +31,14 @@ Made for the **NASA International Space Apps Challenge**.
 3. [What is it?](#-what-is-it)
 4. [How to play: solo](#-how-to-play-solo-pilot)
 5. [How to play: squad (team)](#-how-to-play-squad-team-mission)
-6. [Scores, rewards and leaderboards](#-scores-rewards-and-leaderboards)
-7. [NASA and open data we use](#-nasa-and-open-data-we-use)
-8. [Accessibility](#-accessibility)
-9. [Tech stack](#-tech-stack)
-10. [Run it locally](#-run-it-locally)
-11. [Project structure](#-project-structure)
-12. [Declaration and agreements](#-declaration-and-agreements)
+6. [Username-only join](#-username-only-join-no-email-no-password)
+7. [Scores, rewards and leaderboards](#-scores-rewards-and-leaderboards)
+8. [NASA and open data we use](#-nasa-and-open-data-we-use)
+9. [Accessibility](#-accessibility)
+10. [Tech stack](#-tech-stack)
+11. [Run it locally](#-run-it-locally)
+12. [Project structure](#-project-structure)
+13. [Declaration and agreements](#-declaration-and-agreements)
 
 ---
 
@@ -58,8 +59,8 @@ Made for the **NASA International Space Apps Challenge**.
 | ![Mission briefing](docs/screenshots/03-briefing.png) | ![Data sources](docs/screenshots/04-data-sources.png) |
 | **NASA data explorer** | **Leaderboard** |
 | ![Data explorer](docs/screenshots/05-data-explorer.png) | ![Leaderboard](docs/screenshots/06-leaderboard.png) |
-| **Players: find crew mates** | **Pilot sign-in** |
-| ![Players](docs/screenshots/07-players.png) | ![Login](docs/screenshots/08-login.png) |
+| **Players: find crew mates** | **Join game: just a username** |
+| ![Players](docs/screenshots/07-players.png) | ![Join game](docs/screenshots/08-join.png) |
 
 ---
 
@@ -78,9 +79,12 @@ You are the Mission Director. Pick one of four real-world-inspired missions, sta
 
 ## 🧑‍🚀 How to play: solo pilot
 
-> Anyone can browse missions, briefings and the NASA data pages. **Starting a mission needs a free account**, because results, credits and rankings are verified and stored on the server.
+> Anyone can browse missions, briefings and the NASA data pages. **To fly, you only need a unique username: no email and no password.** Results, credits and rankings are verified and saved on the server under that username.
 
-1. **Create an account** (email or Google) → you get a Player ID (e.g. `MC-BCBCPV`) and 1,000 starting credits.
+1. **Join the game** (top-right **Join game** button):
+   - **New pilot**: type a unique username (3–20 letters, numbers or `_`). The form tells you right away if it is free. You get a Player ID (e.g. `MC-BCBCPV`) and 1,000 starting credits.
+   - **Returning pilot**: type your existing username to continue with all your progress, on any device. Pilots who signed up earlier with email can join the same way, using their username.
+   - **Leave @username** (in the account menu) ends the session on this device. Your pilot stays saved, and you can join again with any username.
 2. **Choose a mission** on the mission select screen.
 3. **Read the briefing.** It shows the target's gravity, atmosphere, temperature and radiation, your budget, mass and power caps, the science target and the safety limit.
 4. **Build the spacecraft.** Choose parts from 7 subsystems: structure, instruments, power, communication, propulsion, thermal and navigation. The blueprint updates live. Warnings such as `SPACECRAFT TOO HEAVY`, `POWER DEFICIT` or `BUDGET EXCEEDED` must be cleared. Matching instruments unlock **synergy bonuses** (for example, camera + laser altimeter gives 3D topographic mapping).
@@ -99,7 +103,7 @@ You are the Mission Director. Pick one of four real-world-inspired missions, sta
 Squads are teams of **2 to 4 pilots** who fly **one shared mission together in real time**. Every member sees the same screen, and each decision belongs to a crew role.
 
 ### 1. Form a squad
-- Open **Squad** → *Create squad* (you become the leader), or accept an invitation from the notification bell.
+- Join the game with your username, then open **Squad** → *Create squad* (you become the leader), or accept an invitation from the notification bell.
 - Go to **Players**, search by name or Player ID, and press **Invite**. When you invite someone, you choose the role they will join with.
 - A squad needs at least **2 members** to start a mission. It can hold up to 4.
 
@@ -131,6 +135,16 @@ The squad mission room (`/squad/<squad>/<mission>`) moves everyone through the s
 - **Squad totals** (science points, mission XP, squad credits, missions completed) grow from **every mission a member flies**, solo or squad, while they are in the squad. They decide the squad's place on the **Squads leaderboard**.
 
 ---
+
+## 🔑 Username-only join (no email, no password)
+
+NASA Space Apps asks teams to avoid email/password sign-up so that judges can play straight away. Here is how joining works:
+
+- The **Join game** page calls the `join_game` database function ([migration](supabase/migrations/20261114100000_username_join.sql)). For a new username, it creates the pilot. For an existing one (including older email accounts), it continues as that pilot.
+- Behind the scenes, Supabase Auth still issues a normal session. The server picks a one-time random secret, the database stores only its bcrypt hash, and the server signs in with it immediately. So every Row Level Security rule and game function works unchanged.
+- All data (profile, statistics, squad, mission results, chat) stays attached to the same pilot, so **everything is saved under your username**.
+- Older accounts' email addresses are moved to a private table that no API role can read. They are never shown and are not lost.
+- ⚠️ **By design, anyone who knows a username can play as that pilot.** This keeps judging easy. Do not use it for anything that needs real account security.
 
 ## 🏆 Scores, rewards and leaderboards
 
@@ -195,7 +209,7 @@ A full list of datasets, archives, retrieval dates and links is in the game (**T
 | 3D & graphics | Three.js, React Three Fiber / Drei (3D launch), HTML5 Canvas (blueprint, orbit map, starfield) |
 | State | Zustand |
 | Audio | Web Audio API procedural synthesizer + speech synthesis call-outs |
-| Backend | **Supabase**: Postgres with Row Level Security, security-definer RPCs, Realtime (squad rooms, chat, notifications), Auth (email + Google) |
+| Backend | **Supabase**: Postgres with Row Level Security, security-definer RPCs, Realtime (squad rooms, chat, notifications), Auth sessions behind a username-only **Join game** (no email or password) |
 | Validation | Zod (server actions) |
 | Tests | PGlite (in-process Postgres) database test suite, plus unit tests |
 

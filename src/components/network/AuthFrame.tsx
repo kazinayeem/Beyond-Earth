@@ -13,11 +13,11 @@ export function AuthFrame({ eyebrow, title, subtitle, children, footer }: {
           className="w-full max-w-[480px] h-auto rounded-3xl ring-1 ring-white/10 shadow-[0_30px_80px_-30px_rgba(56,189,248,0.45)]" />
         <div className="hud-label text-cyan-300/80 mt-8">Mission Control network</div>
         <p className="font-display text-4xl font-semibold leading-tight text-white mt-2">
-          One permanent pilot ID.<br />Three-person squads.<br /><span className="text-cyan-200">Every result verified.</span>
+          One unique username.<br />Squads of up to four.<br /><span className="text-cyan-200">No email, no password.</span>
         </p>
         <ul className="mt-6 space-y-2 text-slate-400 text-sm">
-          <li>· Your progress, credits and achievements follow you to any device</li>
-          <li>· Fly asynchronous squad missions and share coordination bonuses</li>
+          <li>· Join with the same username on any device to keep your progress</li>
+          <li>· Fly solo, or with your squad in real time with crew roles</li>
           <li>· Compete on global, weekly and squad leaderboards</li>
         </ul>
       </div>

@@ -5,7 +5,7 @@ import { SUPABASE_PUBLISHABLE_KEY, SUPABASE_URL, isSupabaseConfigured } from './
 /** Routes that require a signed-in player. Missions, squads, players and rankings are public to browse. */
 const PROTECTED = ['/profile', '/notifications'];
 /** Auth pages a signed-in player should skip. */
-const AUTH_ONLY = ['/login', '/register'];
+const AUTH_ONLY = ['/join'];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -42,7 +42,7 @@ export async function updateSession(request: NextRequest) {
   };
 
   if (!signedIn && PROTECTED.some(p => path === p || path.startsWith(p + '/'))) {
-    return redirectTo('/login', path + request.nextUrl.search);
+    return redirectTo('/join', path + request.nextUrl.search);
   }
   if (signedIn && AUTH_ONLY.includes(path)) {
     return redirectTo('/profile');

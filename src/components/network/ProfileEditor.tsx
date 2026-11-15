@@ -61,7 +61,7 @@ export function ProfileEditor({ profile }: { profile: Profile }) {
                 {label}
               </label>
             ))}
-            <p className="text-[11px] text-slate-500">Your email is never visible to other players. Player ID and username are permanent.</p>
+            <p className="text-[11px] text-slate-500">Player ID and username are permanent. Join with this username on any device to continue playing.</p>
           </fieldset>
         </div>
         <div>
